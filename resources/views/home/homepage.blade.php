@@ -14,7 +14,9 @@
       </div>
       <!-- header section end -->
       
-      
+      <!-- Schema diagram start -->
+       
+       <!-- schema diagram end -->
       
       
       @include('home.footer')

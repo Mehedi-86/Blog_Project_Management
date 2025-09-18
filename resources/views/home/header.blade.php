@@ -21,9 +21,6 @@
                            <a class="nav-link" href="{{ route('services') }}">Services</a>
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link " href="#">Blog</a>
-                        </li>
-                        <li class="nav-item">
                            <a class="nav-link " href="#">Contact</a>
                         </li>
                      </ul>
@@ -45,7 +42,6 @@
                      <li> <a  href="{{ route('about') }}">About</a> </li>
                      <li> <a  href="{{ route('services') }}">Services</a></li>
                     
-                     <li><a href="#">Blog</a></li>
 
                      @if (Route::has('login'))
                      @auth

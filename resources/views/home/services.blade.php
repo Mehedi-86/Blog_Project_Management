@@ -1,49 +1,57 @@
-
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <!-- basic -->
-      @include('home.homecss')
-    </head>
-   <body>
-      <!-- header section start -->
-      <div class="header_section">
+<head>
+    @include('home.homecss')
+
+    <style>
+        /* Section styling */
+        .operations-section {
+            text-align: center;
+            margin:  0;
+        }
+
+        .operations-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        /* Button styling */
+        .stats-button {
+            display: inline-block;
+            padding: 16px 200px; /* More left/right padding */
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+        }
+
+        .stats-button:hover {
+            color: #fff;
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <!-- header section start -->
+    <div class="header_section">
         @include('home.header')
-      
-      </div>
-      <!-- header section end -->
-      <!-- services section start -->
-      <div class="services_section layout_padding">
-         <div class="container">
-            <h1 class="services_taital">Services </h1>
-            <p class="services_text">There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration</p>
-            <div class="services_section_2">
-               <div class="row">
-                  <div class="col-md-4">
-                     <div><img src="images/img-1.png" class="services_img"></div>
-                     <div class="btn_main"><a href="#">Rafting</a></div>
-                  </div>
-                  <div class="col-md-4">
-                     <div><img src="images/img-2.png" class="services_img"></div>
-                     <div class="btn_main active"><a href="#">Hiking</a></div>
-                  </div>
-                  <div class="col-md-4">
-                     <div><img src="images/img-3.png" class="services_img"></div>
-                     <div class="btn_main"><a href="#">Camping</a></div>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </div>
-      <!-- services section end -->
-     
-      
-      @include('home.footer')
-      
-       </body>
+    </div>
+    <!-- header section end -->
+
+    <!-- Operations Section -->
+    <div class="operations-section">
+        <div class="operations-title">Lists of Operations</div>
+        <a href="{{ route('users.list') }}" class="stats-button">
+            Total Users: {{ $totalUsers }}
+        </a>
+    </div>
+
+    @include('home.footer')
+</body>
 </html>
-
-
-
-
-
