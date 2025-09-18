@@ -1,4 +1,18 @@
-<div class="about_section layout_padding">
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <!-- basic -->
+      @include('home.homecss')
+    </head>
+   <body>
+      <!-- header section start -->
+      <div class="header_section">
+        @include('home.header')
+      </div>
+      <!-- header section end -->
+     
+      <!-- about section start -->
+      <div class="about_section layout_padding">
          <div class="container-fluid">
             <div class="row">
                <div class="col-md-6">
@@ -14,3 +28,14 @@
             </div>
          </div>
       </div>
+      <!-- about section end -->
+      
+      
+      @include('home.footer')
+      
+       </body>
+</html>
+
+
+
+

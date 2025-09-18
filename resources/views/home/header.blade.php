@@ -8,19 +8,23 @@
                   <div class="collapse navbar-collapse" id="navbarNav">
                      <ul class="navbar-nav">
                         <li class="nav-item">
-                           <a class="nav-link" href="#">Home</a>
+                           @guest
+                              <a class="nav-link" href="{{ route('homepage') }}">Home</a>
+                           @else
+                              <a class="nav-link" href="{{ route('home') }}">Home</a>
+                           @endguest
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link" href="about.html">About</a>
+                           <a class="nav-link" href="{{ route('about') }}">About</a>
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link" href="services.html">Services</a>
+                           <a class="nav-link" href="{{ route('services') }}">Services</a>
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link " href="blog.html">Blog</a>
+                           <a class="nav-link " href="#">Blog</a>
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link " href="contact.html">Contact</a>
+                           <a class="nav-link " href="#">Contact</a>
                         </li>
                      </ul>
                   </div>
@@ -30,10 +34,18 @@
                <div class="logo"><a href="index.html"><img src="images/logo.png"></a></div>
                <div class="menu_main">
                   <ul>
-                     <li class="active"><a href="#">Home</a></li>
-                     <li><a href="about.html">About</a></li>
+                     <li>
+                        @guest
+                           <a href="{{ route('homepage') }}">Home</a>
+                        @else
+                           <a href="{{ route('home') }}">Home</a>
+                        @endguest
+                     </li>
+
+                     <li> <a  href="{{ route('about') }}">About</a> </li>
+                     <li> <a  href="{{ route('services') }}">Services</a></li>
                     
-                     <li><a href="blog.html">Blog</a></li>
+                     <li><a href="#">Blog</a></li>
 
                      @if (Route::has('login'))
                      @auth

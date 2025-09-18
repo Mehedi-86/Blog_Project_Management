@@ -1,4 +1,19 @@
-<div class="services_section layout_padding">
+
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <!-- basic -->
+      @include('home.homecss')
+    </head>
+   <body>
+      <!-- header section start -->
+      <div class="header_section">
+        @include('home.header')
+      
+      </div>
+      <!-- header section end -->
+      <!-- services section start -->
+      <div class="services_section layout_padding">
          <div class="container">
             <h1 class="services_taital">Services </h1>
             <p class="services_text">There are many variations of passages of Lorem Ipsum available, but the majority have suffered alteration</p>
@@ -20,3 +35,15 @@
             </div>
          </div>
       </div>
+      <!-- services section end -->
+     
+      
+      @include('home.footer')
+      
+       </body>
+</html>
+
+
+
+
+
