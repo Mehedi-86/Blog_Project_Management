@@ -18,7 +18,14 @@
                            <a class="nav-link" href="{{ route('about') }}">About</a>
                         </li>
                         <li class="nav-item">
-                           <a class="nav-link" href="{{ route('services') }}">Services</a>
+                           @auth
+                              <a class="nav-link" href="{{ route('services') }}">Services</a>
+                           @endauth
+                        </li>
+                        <li class="nav-item">
+                           @auth
+                               <a class="nav-link" href="{{ route('addData') }}">Add Data</a>
+                           @endauth
                         </li>
                         <li class="nav-item">
                            <a class="nav-link " href="#">Contact</a>
@@ -40,8 +47,17 @@
                      </li>
 
                      <li> <a  href="{{ route('about') }}">About</a> </li>
-                     <li> <a  href="{{ route('services') }}">Services</a></li>
-                    
+                     <li>
+                        @auth
+                           <a href="{{ route('services') }}">Services</a>
+                        @endauth
+                     </li>
+
+                     <li>
+                        @auth
+                         <a href="{{ route('addData') }}">Add Data</a>
+                        @endauth
+                     </li>
 
                      @if (Route::has('login'))
                      @auth

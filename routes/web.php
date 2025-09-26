@@ -20,3 +20,42 @@ Route::get('/services', [HomeController::class, 'services'])->name('services');
 
 // Users list page
 Route::get('/users-list', [HomeController::class, 'usersList'])->name('users.list');
+
+// Step 1: Show page with just the button
+Route::get('/add-data', [HomeController::class, 'showAddDataButton'])->name('addData');
+
+// Step 2: Show actual form to add a post
+Route::get('/add-post', [HomeController::class, 'showAddPostForm'])->name('addPost');
+
+// Step 3: Handle form submission
+Route::post('/add-post', [HomeController::class, 'storePost'])->name('addPost.store');
+
+Route::get('/like-posts', [HomeController::class, 'showAllPostsForLike'])->name('likePostPage');
+
+Route::post('/like/{id}', [HomeController::class, 'likePost'])->name('likePost');
+
+Route::post('/unlike/{id}', [HomeController::class, 'unlikePost'])->name('unlikePost');
+
+Route::delete('/clear-comments/{id}', [HomeController::class, 'clearComments'])->name('clearComments');
+
+Route::post('/save-post/{id}', [HomeController::class, 'savePost'])->name('savePost');
+
+Route::delete('/unsave-post/{id}', [HomeController::class, 'unsavePost'])->name('unsavePost');
+
+Route::post('/comment-post/{id}', [HomeController::class, 'commentPost'])
+    ->name('commentPost')
+    ->middleware('auth');
+
+
+    Route::get('/notifications', [HomeController::class, 'showNotifications'])
+    ->name('showNotifications')
+    ->middleware('auth');
+
+    // Show posts for commenting
+Route::get('/comment-posts', [HomeController::class, 'showPostsForComment'])
+->name('commentPostPage')
+->middleware('auth');
+
+Route::delete('/notification/{id}', [HomeController::class, 'deleteNotification'])->name('deleteNotification')->middleware('auth');
+
+
