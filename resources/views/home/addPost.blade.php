@@ -90,10 +90,17 @@
                     @csrf
                     <input type="text" name="title" class="form-control" placeholder="Post Title" required>
                     <textarea name="content" class="form-control" rows="5" placeholder="Post Content" required></textarea>
-                    <input type="text" name="category_name" class="form-control" placeholder="Category (optional)">
-                    <button type="submit" class="btn btn-success">➕ Add Post</button>
-                </form>
 
+                    <!-- Category Dropdown -->
+                    <select name="category_id" class="form-control" required>
+                        <option value="" disabled selected>-- Select Category --</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit" class="btn btn-success mt-3">➕ Add Post</button>
+                </form>
             </div>
         </div>
     </div>

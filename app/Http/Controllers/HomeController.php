@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\Post;
+use App\Models\User;
+use App\Models\Follow;
+use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
@@ -320,5 +323,80 @@ public function deleteNotification($id)
     return redirect()->back()->with('success', 'Notification deleted successfully!');
 }
 
+public function showFollowers()
+{
+    $user = Auth::user();
+
+    // Get all users except logged-in user
+    $allUsers = User::where('id', '!=', $user->id)->get();
+
+    // Get IDs of users the logged-in user is following
+    $followingIds = Follow::where('follower_id', $user->id)
+                          ->pluck('following_id')
+                          ->toArray();
+
+    return view('home.follower', compact('allUsers', 'followingIds'));
+}
+
+public function followUser($id)
+{
+    $user = Auth::user();
+
+    // Prevent duplicate follows
+    if (!Follow::where('follower_id', $user->id)->where('following_id', $id)->exists()) {
+        Follow::create([
+            'follower_id' => $user->id,
+            'following_id' => $id,
+        ]);
+    }
+
+    return redirect()->back();
+}
+
+public function unfollowUser($id)
+{
+    $user = Auth::user();
+
+    Follow::where('follower_id', $user->id)
+          ->where('following_id', $id)
+          ->delete();
+
+    return redirect()->back();
+}
+
+public function reportPost($id)
+{
+    $user_id = auth()->id();
+
+    // Check if already reported
+    $exists = DB::table('reports')
+        ->where('post_id', $id)
+        ->where('reported_by', $user_id)
+        ->exists();
+
+    if (!$exists) {
+        DB::table('reports')->insert([
+            'post_id' => $id,
+            'reported_by' => $user_id,
+            'reason' => 'Inappropriate content', // optional, you can add a reason input later
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    return redirect()->back()->with('success', 'Post reported!');
+}
+
+public function undoReportPost($id)
+{
+    $user_id = auth()->id();
+
+    DB::table('reports')
+        ->where('post_id', $id)
+        ->where('reported_by', $user_id)
+        ->delete();
+
+    return redirect()->back()->with('success', 'Report removed!');
+}
 
 }

@@ -61,10 +61,10 @@
             border-radius: 3px;
         }
 
-        .btn-like, .btn-save {
+        .btn-like, .btn-save, .btn-report {
             color: white;
             border: none;
-            padding: 10px 25px;
+            padding: 10px 20px;
             border-radius: 10px;
             font-size: 1.05rem;
             font-weight: 600;
@@ -72,24 +72,16 @@
             margin-right: 10px;
         }
 
-        .btn-like {
-            background-color: #dc3545;
-        }
-        .btn-like:hover {
-            background-color: #c82333;
-        }
+        .btn-like { background-color: #dc3545; }
+        .btn-like:hover { background-color: #c82333; }
 
-        .btn-save {
-            background-color: #17a2b8;
-        }
-        .btn-save:hover {
-            background-color: #138496;
-        }
+        .btn-save { background-color: #17a2b8; }
+        .btn-save:hover { background-color: #138496; }
 
-        .btn-container {
-            display: flex;
-            margin-top: 15px;
-        }
+        .btn-report { background-color: #fd7e14; }
+        .btn-report:hover { opacity: 0.85; }
+
+        .btn-container { display: flex; margin-top: 15px; }
 
         .no-posts {
             text-align: center;
@@ -113,12 +105,19 @@
         @endif
 
         @foreach($posts as $post)
+            @php
+                $reported = DB::table('reports')
+                    ->where('post_id', $post->id)
+                    ->where('reported_by', auth()->id())
+                    ->exists();
+            @endphp
+
             <div class="card">
                 <h4>{{ $post->title }}</h4>
                 <p>{{ $post->content }}</p>
 
                 <div class="btn-container">
-                    <!-- Like / Unlike (unchanged) -->
+                    <!-- Like / Unlike -->
                     @if(in_array($post->id, $liked))
                         <form action="{{ route('unlikePost', $post->id) }}" method="POST">
                             @csrf
@@ -142,6 +141,20 @@
                         <form action="{{ route('savePost', $post->id) }}" method="POST">
                             @csrf
                             <button type="submit" class="btn-save">💾 Save</button>
+                        </form>
+                    @endif
+
+                    <!-- Report / Undo Report -->
+                    @if($reported)
+                        <form action="{{ route('undoReportPost', $post->id) }}" method="POST">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn-report">⚠️ Undo Report</button>
+                        </form>
+                    @else
+                        <form action="{{ route('reportPost', $post->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="btn-report">⚠️ Report</button>
                         </form>
                     @endif
                 </div>

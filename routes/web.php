@@ -58,4 +58,14 @@ Route::get('/comment-posts', [HomeController::class, 'showPostsForComment'])
 
 Route::delete('/notification/{id}', [HomeController::class, 'deleteNotification'])->name('deleteNotification')->middleware('auth');
 
+Route::get('/followers', [HomeController::class, 'showFollowers'])
+    ->name('followerPage')
+    ->middleware('auth');
 
+    Route::post('/follow/{id}', [HomeController::class, 'followUser'])->name('followUser')->middleware('auth');
+
+Route::post('/unfollow/{id}', [HomeController::class, 'unfollowUser'])->name('unfollowUser')->middleware('auth');
+
+Route::post('/report-post/{id}', [HomeController::class, 'reportPost'])->name('reportPost');
+
+Route::delete('/undo-report/{id}', [HomeController::class, 'undoReportPost'])->name('undoReportPost');

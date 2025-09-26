@@ -83,6 +83,7 @@
         <a href="{{ route('likePostPage') }}" class="btn-add-post">❤️ Like or Save a Post</a>
         <a href="{{ route('commentPostPage') }}" class="btn-add-post mb-3">💬 Comment on Post</a>
         <a href="{{ route('showNotifications') }}" class="btn-add-post">🔔 Show Notifications</a>
+        <a href="{{ route('followerPage') }}" class="btn-add-post">👥 Followers</a>
     </div>
 </div>
 
