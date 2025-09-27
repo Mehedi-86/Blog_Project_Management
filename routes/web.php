@@ -70,4 +70,8 @@ Route::post('/report-post/{id}', [HomeController::class, 'reportPost'])->name('r
 
 Route::delete('/undo-report/{id}', [HomeController::class, 'undoReportPost'])->name('undoReportPost');
 
+Route::get('/switch-to-admin-dashboard', [HomeController::class, 'switchToAdminDashboard'])
+    ->name('switch.admin.dashboard');
 
+Route::get('/admin/home', [AdminController::class, 'index'])
+    ->name('admin.home');

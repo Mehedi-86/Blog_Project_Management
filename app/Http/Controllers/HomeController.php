@@ -399,4 +399,14 @@ public function undoReportPost($id)
     return redirect()->back()->with('success', 'Report removed!');
 }
 
+public function switchToAdminDashboard()
+{
+    // Stop viewing as user
+    session()->forget('view_as_user');
+
+    // Redirect to normal user homepage instead of admin
+    return redirect()->route('home'); // <-- this points to /home
+}
+
+
 }

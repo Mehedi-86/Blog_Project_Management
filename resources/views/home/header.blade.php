@@ -27,6 +27,15 @@
                                <a class="nav-link" href="{{ route('addData') }}">Add Data</a>
                            @endauth
                         </li>
+                        @auth 
+                           @if(Auth::user() && Auth::user()->usertype === 'admin')
+                              <li class="nav-item">
+                                 <a class="nav-link" href="{{ route('switch.admin.dashboard') }}">
+                                          Switch to Admin Dashboard
+                                 </a>
+                              </li>
+                           @endif
+                        @endauth
                         <li class="nav-item">
                            <a class="nav-link " href="#">Contact</a>
                         </li>
@@ -61,7 +70,16 @@
                         @endauth
                      </li>
 
-                    
+                     <li class="nav-item">
+                        @auth 
+                           @if(Auth::user() && Auth::user()->usertype === 'admin')                           
+                                 <a href="{{ route('switch.admin.dashboard') }}">
+                                          Switch Dashboard
+                                 </a>
+                           @endif
+                        @endauth
+                    </li>
+
                      @if (Route::has('login'))
                      @auth
 

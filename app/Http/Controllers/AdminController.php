@@ -15,20 +15,14 @@ class AdminController extends Controller
     }
 
     public function index()
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        if (!$user) {
-            // Not logged in, redirect to login
-            return redirect()->route('login');
-        }
-
-        if ($user->usertype === 'user') {
-            // Regular user, go to homepage (not /home)
-            return redirect()->route('homepage'); 
-        }
-
-        // Admin user
-        return view('admin.adminhome');
+    if (!$user || $user->usertype !== 'admin') {
+        return redirect()->route('homepage'); // redirect unauthorized users
     }
+
+    return view('admin.adminhome'); // your admin dashboard blade
+}
+
 }
