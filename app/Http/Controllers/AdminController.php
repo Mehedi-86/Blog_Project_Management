@@ -3,31 +3,32 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
-use App\Models\User;
-
 use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
-    public function index(){
+    // Apply middleware in constructor if desired
+    public function __construct()
+    {
+        $this->middleware('auth');      // ensure user is logged in
+        // only admins can access index
+    }
 
-        if(Auth::id()){
+    public function index()
+    {
+        $user = Auth::user();
 
-            $usertype = Auth()->user()->usertype;
-
-            if($usertype == 'user'){
-
-                return view('home.homepage');
-            }
-
-            else if($usertype =='admin'){
-                return view('admin.adminhome');
-            }
-
-            else{
-                return redirect()->back();
-            }
+        if (!$user) {
+            // Not logged in, redirect to login
+            return redirect()->route('login');
         }
+
+        if ($user->usertype === 'user') {
+            // Regular user, go to homepage (not /home)
+            return redirect()->route('homepage'); 
+        }
+
+        // Admin user
+        return view('admin.adminhome');
     }
 }

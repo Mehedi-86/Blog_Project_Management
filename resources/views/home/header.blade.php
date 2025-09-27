@@ -30,6 +30,8 @@
                         <li class="nav-item">
                            <a class="nav-link " href="#">Contact</a>
                         </li>
+                        <!-- Switch Dashboard button for admin -->
+                       
                      </ul>
                   </div>
                </nav>
@@ -59,6 +61,7 @@
                         @endauth
                      </li>
 
+                    
                      @if (Route::has('login'))
                      @auth
 

@@ -69,3 +69,5 @@ Route::post('/unfollow/{id}', [HomeController::class, 'unfollowUser'])->name('un
 Route::post('/report-post/{id}', [HomeController::class, 'reportPost'])->name('reportPost');
 
 Route::delete('/undo-report/{id}', [HomeController::class, 'undoReportPost'])->name('undoReportPost');
+
+
