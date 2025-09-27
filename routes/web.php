@@ -104,3 +104,11 @@ Route::prefix('admin')->group(function () {
     // Delete post
     Route::get('/manage-posts/delete/{id}', [AdminController::class, 'deletePost'])->name('admin.delete.post');
 });
+
+Route::get('/manage-users', [AdminController::class, 'manageUsers'])->name('admin.manage.users');
+
+Route::get('/ban-user/{id}', [AdminController::class, 'banUser'])->name('admin.ban.user');
+
+Route::get('/unban-user/{id}', [AdminController::class, 'unbanUser'])->name('admin.unban.user');
+
+Route::get('/delete-user/{id}', [AdminController::class, 'deleteUser'])->name('admin.delete.user');

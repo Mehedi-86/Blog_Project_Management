@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Post;
 use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class AdminController extends Controller
 {
@@ -64,6 +65,39 @@ class AdminController extends Controller
             'message' => 'Post deleted successfully!',
             'type' => 'danger'
         ]);
+    }
+
+    public function manageUsers()
+{
+    // Only fetch users who are NOT admin
+    $users = User::where('usertype', '!=', 'admin')->get();
+    return view('admin.manageUsers', compact('users'));
+}
+
+    public function banUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->is_banned = 1;
+        $user->save();
+
+        return redirect()->back()->with(['message' => 'User banned successfully!', 'type' => 'warning']);
+    }
+
+    public function unbanUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->is_banned = 0;
+        $user->save();
+
+        return redirect()->back()->with(['message' => 'User unbanned successfully!', 'type' => 'success']);
+    }
+
+    public function deleteUser($id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return redirect()->back()->with(['message' => 'User deleted successfully!', 'type' => 'danger']);
     }
 
 }

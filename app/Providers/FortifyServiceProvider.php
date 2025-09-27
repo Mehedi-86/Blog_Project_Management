@@ -14,6 +14,11 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 
+// Added imports
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+
 class FortifyServiceProvider extends ServiceProvider
 {
     /**
@@ -35,14 +40,36 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
 
+        // Rate limiter for login
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
-
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        // Rate limiter for two-factor
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
+        });
+
+        // ------------------------------
+        // Custom authentication: block banned users
+        // ------------------------------
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = User::where('email', $request->email)->first();
+
+            if ($user && Hash::check($request->password, $user->password)) {
+
+                if ($user->is_banned) {
+                    // Prevent login for banned users
+                    throw ValidationException::withMessages([
+                        'email' => 'Your account has been banned. Please contact admin.',
+                    ]);
+                }
+
+                return $user; // allow login
+            }
+
+            return null; // invalid credentials
         });
     }
 }

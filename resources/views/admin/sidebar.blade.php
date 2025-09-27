@@ -9,7 +9,11 @@
         </div>
         <!-- Sidebar Navidation Menus--><span class="heading">Main</span>
         <ul class="list-unstyled">
-                <li class="active"><a href="index.html"> <i class="icon-home"></i>Home </a></li>
+                <li class="active">
+                    <a href="{{ url('/home') }}">
+                        <i class="icon-home"></i> Home
+                    </a>
+                </li>
                 <li>
                     <a href="{{ route('homepage') }}"> 
                         <i class="icon-grid"></i> Switch Dashboard
@@ -22,7 +26,11 @@
                     </a>
                 </li>
                 </li>
-                <li><a href="forms.html"> <i class="icon-padnote"></i>Forms </a></li>
+                <li>
+                    <a href="{{ route('admin.manage.users') }}">
+                        <i class="fa fa-users"></i> Manage Users
+                    </a>
+                </li>
                 <li><a href="#exampledropdownDropdown" aria-expanded="false" data-toggle="collapse"> <i class="icon-windows"></i>Example dropdown </a>
                   <ul id="exampledropdownDropdown" class="collapse list-unstyled ">
                     <li><a href="#">Page</a></li>
