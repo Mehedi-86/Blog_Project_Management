@@ -75,3 +75,32 @@ Route::get('/switch-to-admin-dashboard', [HomeController::class, 'switchToAdminD
 
 Route::get('/admin/home', [AdminController::class, 'index'])
     ->name('admin.home');
+
+Route::post('/posts/{id}/view', [HomeController::class, 'increaseView'])->name('increaseView');
+
+// Manage posts page
+Route::get('/admin/manage-posts', [AdminController::class, 'managePosts'])->name('admin.manage.posts');
+
+// Accept post
+Route::get('/admin/manage-posts/accept/{id}', [AdminController::class, 'acceptPost'])->name('admin.accept.post');
+
+// Reject post
+Route::get('/admin/manage-posts/reject/{id}', [AdminController::class, 'rejectPost'])->name('admin.reject.post');
+
+// Delete post
+Route::delete('/admin/manage-posts/delete/{id}', [AdminController::class, 'deletePost'])->name('admin.delete.post');
+
+Route::prefix('admin')->group(function () {
+
+    // Show manage posts page
+    Route::get('/manage-posts', [AdminController::class, 'managePosts'])->name('admin.manage.posts');
+
+    // Accept post
+    Route::get('/manage-posts/accept/{id}', [AdminController::class, 'acceptPost'])->name('admin.accept.post');
+
+    // Reject post
+    Route::get('/manage-posts/reject/{id}', [AdminController::class, 'rejectPost'])->name('admin.reject.post');
+
+    // Delete post
+    Route::get('/manage-posts/delete/{id}', [AdminController::class, 'deletePost'])->name('admin.delete.post');
+});

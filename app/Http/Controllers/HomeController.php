@@ -408,5 +408,16 @@ public function switchToAdminDashboard()
     return redirect()->route('home'); // <-- this points to /home
 }
 
+public function increaseView($id)
+{
+    $post = Post::findOrFail($id);
+
+    // Increment views by 1
+    $post->views += 1;
+    $post->save();
+
+    return back()->with('success', 'View count updated!');
+}
+
 
 }

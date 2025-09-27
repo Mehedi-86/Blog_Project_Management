@@ -157,6 +157,15 @@
                             <button type="submit" class="btn-report">⚠️ Report</button>
                         </form>
                     @endif
+
+                    <!-- View Button with Count -->
+                    <form action="{{ route('increaseView', $post->id) }}" method="POST" style="display:inline;">
+                        @csrf
+                        <button type="submit" class="btn btn-info" 
+                            style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
+                            👁️ View ({{ $post->views }})
+                        </button>
+                    </form>
                 </div>
             </div>
         @endforeach

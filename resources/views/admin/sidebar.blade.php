@@ -15,7 +15,13 @@
                         <i class="icon-grid"></i> Switch Dashboard
                     </a>
                 </li>
-                <li><a href="charts.html"> <i class="fa fa-bar-chart"></i>Charts </a></li>
+                <li>
+                <li>
+                    <a href="{{ route('admin.manage.posts') }}">
+                        <i class="fa fa-bar-chart"></i> Manage Posts
+                    </a>
+                </li>
+                </li>
                 <li><a href="forms.html"> <i class="icon-padnote"></i>Forms </a></li>
                 <li><a href="#exampledropdownDropdown" aria-expanded="false" data-toggle="collapse"> <i class="icon-windows"></i>Example dropdown </a>
                   <ul id="exampledropdownDropdown" class="collapse list-unstyled ">
