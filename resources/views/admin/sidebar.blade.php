@@ -31,6 +31,11 @@
                         <i class="fa fa-users"></i> Manage Users
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('admin.dashboard') }}"> 
+                        <i class="icon-presentation"></i>Analytics Dashboard 
+                    </a>
+                </li>
                 <li><a href="#exampledropdownDropdown" aria-expanded="false" data-toggle="collapse"> <i class="icon-windows"></i>Example dropdown </a>
                   <ul id="exampledropdownDropdown" class="collapse list-unstyled ">
                     <li><a href="#">Page</a></li>

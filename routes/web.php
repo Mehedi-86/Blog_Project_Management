@@ -149,3 +149,5 @@ Route::get('/reports-by-me', [HomeController::class, 'reportsByMe'])->name('repo
 Route::get('/show-users', [HomeController::class, 'showUsers'])->name('users.show');
 
 Route::get('/leaderboard', [HomeController::class, 'leaderboard'])->name('leaderboard');
+
+Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');

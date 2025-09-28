@@ -124,4 +124,48 @@ class AdminController extends Controller
             'type' => 'danger'
         ]);
     }
+
+   // In app/Http/Controllers/AdminController.php
+
+public function dashboard()
+{
+    // --- 1. Learning DATE FUNCTIONS ---
+    // Get the number of new posts created each day for the last 7 days.
+    $postsLast7Days = DB::select("
+        SELECT 
+            DATE(created_at) as creation_date, 
+            COUNT(id) as post_count
+        FROM posts
+        WHERE created_at >= CURDATE() - INTERVAL 7 DAY
+        GROUP BY DATE(created_at)
+        ORDER BY creation_date ASC
+    ");
+
+    // --- 2. Learning the HAVING Clause ---
+    // Find "Power Users" - users who have created more than 3 posts.
+    $powerUsers = DB::select("
+        SELECT 
+            u.name, 
+            u.email,
+            COUNT(p.id) as total_posts
+        FROM users u
+        JOIN posts p ON u.id = p.user_id
+        GROUP BY u.id, u.name, u.email
+        HAVING COUNT(p.id) > 3 -- Filter the GROUPS, not the rows
+        ORDER BY total_posts DESC
+    ");
+
+    // --- 3. Learning UNION ---
+    // Create a unified activity log of the 5 most recent new posts AND new users.
+    $activityLog = DB::select("
+        (SELECT id, 'New Post' as activity_type, title as details, created_at FROM posts ORDER BY created_at DESC LIMIT 5)
+        UNION ALL
+        (SELECT id, 'New User' as activity_type, name as details, created_at FROM users ORDER BY created_at DESC LIMIT 5)
+        ORDER BY created_at DESC
+        LIMIT 10
+    ");
+
+    return view('admin.dashboard', compact('postsLast7Days', 'powerUsers', 'activityLog'));
+}
+ 
 }
