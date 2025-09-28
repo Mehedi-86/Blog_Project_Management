@@ -77,6 +77,21 @@
         <a href="{{ route('whom.iFollow') }}" class="stats-button">
             Whom I Follow
         </a>
+        <a href="{{ route('posts.details') }}" class="stats-button">
+            Post Details
+        </a>
+        <a href="{{ route('posts.active') }}" class="stats-button">
+            Active Posts
+        </a>
+        <a href="{{ route('posts.rejected') }}" class="stats-button">
+             Rejected Posts
+        </a>
+        <a href="{{ route('reports.my_posts') }}" class="stats-button">
+            Who Reported On My Posts
+        </a>
+        <a href="{{ route('reports.by_me') }}" class="stats-button">
+            Posts Reported By Me
+        </a>
     </div>
 
     @include('home.footer')

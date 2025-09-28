@@ -134,3 +134,13 @@ Route::get('/followers-of-me', [HomeController::class, 'followersOfMe'])->name('
 
 // Whom I Follow
 Route::get('/whom-i-follow', [HomeController::class, 'whomIFollow'])->name('whom.iFollow');
+
+Route::get('/post-details', [HomeController::class, 'postDetails'])->name('posts.details');
+
+Route::get('/posts/active', [HomeController::class, 'activePosts'])->name('posts.active');
+
+Route::get('/rejected-posts', [HomeController::class, 'rejectedPosts'])->name('posts.rejected');
+
+Route::get('/reports/my-posts', [HomeController::class, 'reportsOnMyPosts'])->name('reports.my_posts');
+
+Route::get('/reports-by-me', [HomeController::class, 'reportsByMe'])->name('reports.by_me');

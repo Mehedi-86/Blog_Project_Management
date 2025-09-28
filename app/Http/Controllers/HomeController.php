@@ -443,19 +443,28 @@ public function updatePost(Request $request, $id)
     return redirect()->back()->with('success', 'Post updated successfully!');
 }
 
-public function listPosts()
+public function listPosts(Request $request)
 {
-    $posts = DB::select("
-    SELECT posts.id, posts.title, posts.views, posts.user_id, users.name, categories.name AS category_name
-    FROM posts
-    JOIN users ON posts.user_id = users.id
-    LEFT JOIN categories ON posts.category_id = categories.id
-    ORDER BY posts.created_at DESC
-");
+    $categoryId = $request->query('category_id'); // get selected category
 
+    // Fetch categories for dropdown
+    $categories = DB::table('categories')->get();
 
-    return view('home.posts_list', compact('posts'));
+    // Fetch posts with optional category filter
+    $postsQuery = DB::table('posts')
+        ->join('users', 'posts.user_id', '=', 'users.id')
+        ->leftJoin('categories', 'posts.category_id', '=', 'categories.id')
+        ->select('posts.*', 'users.name', 'categories.name as category_name');
+
+    if ($categoryId) {
+        $postsQuery->where('posts.category_id', $categoryId);
+    }
+
+    $posts = $postsQuery->orderBy('posts.created_at', 'desc')->get();
+
+    return view('home.posts_list', compact('posts', 'categories', 'categoryId'));
 }
+
 
 public function likedPosts()
 {
@@ -559,6 +568,96 @@ public function whomIFollow()
     ", [$user_id]);
 
     return view('home.whom_i_follow', compact('followings'));
+}
+
+public function postDetails()
+{
+    $posts = DB::select("
+        SELECT 
+            p.id,
+            p.title,
+            c.name AS category_name,
+            (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS likes_count,
+            (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comments_count,
+            (SELECT COUNT(*) FROM reports r WHERE r.post_id = p.id) AS reports_count
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.created_at DESC
+    ");
+
+    return view('home.post_details_table', compact('posts'));
+}
+
+public function activePosts()
+{
+    $posts = \DB::table('posts')
+        ->join('categories', 'posts.category_id', '=', 'categories.id')
+        ->join('users', 'posts.user_id', '=', 'users.id') // join users for author
+        ->select('posts.*', 'categories.name as category_name', 'users.name as author_name')
+        ->where('posts.status', 'active')
+        ->orderBy('posts.created_at', 'desc')
+        ->get();
+
+    return view('home.active_posts', compact('posts'));
+}
+
+public function rejectedPosts()
+{
+    $posts = \DB::table('posts')
+        ->join('categories', 'posts.category_id', '=', 'categories.id')
+        ->join('users', 'posts.user_id', '=', 'users.id')
+        ->select('posts.*', 'categories.name as category_name', 'users.name as author_name')
+        ->where('posts.status', 'rejected')
+        ->orderBy('posts.created_at', 'desc')
+        ->get();
+
+    return view('home.rejected_posts', compact('posts'));
+}
+
+public function reportsOnMyPosts()
+{
+    $userId = auth()->id(); // logged-in user (the post owner)
+
+    $reports = DB::table('reports')
+        ->join('posts', 'reports.post_id', '=', 'posts.id')
+        ->join('users', 'reports.reported_by', '=', 'users.id')
+        ->where('posts.user_id', $userId) // only reports on my posts
+        ->select(
+            'reports.id as report_id',
+            'users.name as reporter_name',
+            'users.email as reporter_email',
+            'posts.id as post_id',
+            'posts.title as post_title',
+            'reports.reason',
+            'reports.created_at as reported_at'
+        )
+        ->orderBy('reports.created_at', 'desc')
+        ->get();
+
+    return view('home.reports_on_my_posts', compact('reports'));
+}
+
+public function reportsByMe()
+{
+    $userId = auth()->id();
+
+    $reports = \DB::table('reports')
+        ->join('posts', 'reports.post_id', '=', 'posts.id')
+        ->join('users as post_owner', 'posts.user_id', '=', 'post_owner.id')
+        ->select(
+            'reports.id as report_id',
+            'post_owner.name as post_owner_name',
+            'post_owner.email as post_owner_email',
+            'posts.id as post_id',
+            'posts.title as post_title',
+            'reports.reason',
+            'reports.created_at as reported_at'
+        )
+        ->where('reports.reported_by', $userId)
+        ->orderBy('reports.created_at', 'desc')
+        ->get();
+
+    return view('home.reports_by_me', compact('reports'));
 }
 
 }
