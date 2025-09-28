@@ -733,4 +733,71 @@ public function leaderboard()
 
     return view('home.leaderboard', compact('topPosts'));
 }
+
+// Add this new method to your HomeController to display the page
+public function managePortfolio()
+{
+    $userId = auth()->id();
+
+    // Fetch all existing portfolio items for the logged-in user
+    $workExperiences = DB::select("SELECT * FROM work_experiences WHERE user_id = ? ORDER BY year DESC", [$userId]);
+    $educations = DB::select("SELECT * FROM educations WHERE user_id = ? ORDER BY graduation_year DESC", [$userId]);
+    $activities = DB::select("SELECT * FROM extra_curricular_activities WHERE user_id = ? ORDER BY created_at DESC", [$userId]);
+
+    return view('home.manage_portfolio', compact('workExperiences', 'educations', 'activities'));
+}
+
+// Add this method to handle adding a new work experience
+public function addWorkExperience(Request $request)
+{
+    $request->validate([
+        'workplace_name' => 'required|string|max:255',
+        'designation' => 'required|string|max:255',
+        'year' => 'required|string|max:255',
+    ]);
+
+    DB::insert(
+        "INSERT INTO work_experiences (user_id, workplace_name, designation, year, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [auth()->id(), $request->workplace_name, $request->designation, $request->year, now(), now()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Work experience added successfully!');
+}
+
+// Add this method to handle adding new education
+public function addEducation(Request $request)
+{
+    $request->validate([
+        'school_name' => 'required|string|max:255',
+        'degree' => 'required|string|max:255',
+        'graduation_year' => 'required|string|max:255',
+    ]);
+
+    DB::insert(
+        "INSERT INTO educations (user_id, school_name, degree, graduation_year, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [auth()->id(), $request->school_name, $request->degree, $request->graduation_year, now(), now()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Education added successfully!');
+}
+
+// Add this method to handle adding a new activity
+public function addActivity(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'time_duration' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'github_link' => 'nullable|url|max:255',
+    ]);
+
+    DB::insert(
+        "INSERT INTO extra_curricular_activities (user_id, name, time_duration, description, github_link, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [auth()->id(), $request->name, $request->time_duration, $request->description, $request->github_link, now(), now()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Activity added successfully!');
+}
+
+
 }

@@ -36,6 +36,9 @@
                               </li>
                            @endif
                         @endauth
+                        @auth 
+                          <li class="nav-item"><a class="nav-link" href="{{ route('portfolio.manage') }}">My Portfolio</a></li>
+                        @endauth
                         <li class="nav-item">
                            <a class="nav-link " href="#">Contact</a>
                         </li>
@@ -79,6 +82,10 @@
                            @endif
                         @endauth
                     </li>
+
+                    @auth 
+                    <li><a href="{{ route('portfolio.manage') }}">My Portfolio</a></li>
+                    @endauth
 
                      @if (Route::has('login'))
                      @auth

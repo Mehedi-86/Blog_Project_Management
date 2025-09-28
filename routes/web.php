@@ -151,3 +151,14 @@ Route::get('/show-users', [HomeController::class, 'showUsers'])->name('users.sho
 Route::get('/leaderboard', [HomeController::class, 'leaderboard'])->name('leaderboard');
 
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+
+// Add this group of routes to your web.php file, preferably with other authenticated routes
+
+Route::middleware('auth')->group(function () {
+    Route::get('/manage-portfolio', [HomeController::class, 'managePortfolio'])->name('portfolio.manage');
+    
+    // Routes to handle the form submissions
+    Route::post('/portfolio/work', [HomeController::class, 'addWorkExperience'])->name('portfolio.add.work');
+    Route::post('/portfolio/education', [HomeController::class, 'addEducation'])->name('portfolio.add.education');
+    Route::post('/portfolio/activity', [HomeController::class, 'addActivity'])->name('portfolio.add.activity');
+});
