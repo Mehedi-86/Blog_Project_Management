@@ -4,34 +4,31 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Post;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 
 class AdminController extends Controller
 {
-    // Apply middleware in constructor if desired
+    // Apply middleware in constructor
     public function __construct()
     {
-        $this->middleware('auth');      // ensure user is logged in
-        // only admins can access index
+        $this->middleware('auth'); // ensure user is logged in
     }
 
+    // Admin dashboard
     public function index()
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    if (!$user || $user->usertype !== 'admin') {
-        return redirect()->route('homepage'); // redirect unauthorized users
+        if (!$user || $user->usertype !== 'admin') {
+            return redirect()->route('homepage'); // redirect unauthorized users
+        }
+
+        return view('admin.adminhome'); // your admin dashboard blade
     }
-
-    return view('admin.adminhome'); // your admin dashboard blade
-}
-
-
 
     // Show manage posts page
-    public function managePosts() {
+    public function managePosts()
+    {
         $posts = DB::table('posts')
                     ->join('users', 'posts.user_id', '=', 'users.id')
                     ->select('posts.*', 'users.name', 'users.usertype')
@@ -41,8 +38,12 @@ class AdminController extends Controller
     }
 
     // Accept post
-    public function acceptPost($id) {
-        DB::table('posts')->where('id', $id)->update(['status' => 'active']);
+    public function acceptPost($id)
+    {
+        DB::table('posts')
+            ->where('id', $id)
+            ->update(['status' => 'active']);
+
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post accepted successfully!',
             'type' => 'success'
@@ -50,8 +51,12 @@ class AdminController extends Controller
     }
 
     // Reject post
-    public function rejectPost($id) {
-        DB::table('posts')->where('id', $id)->update(['status' => 'rejected']);
+    public function rejectPost($id)
+    {
+        DB::table('posts')
+            ->where('id', $id)
+            ->update(['status' => 'rejected']);
+
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post rejected successfully!',
             'type' => 'warning'
@@ -59,47 +64,64 @@ class AdminController extends Controller
     }
 
     // Delete post
-    public function deletePost($id) {
-        DB::table('posts')->where('id', $id)->delete();
+    public function deletePost($id)
+    {
+        DB::table('posts')
+            ->where('id', $id)
+            ->delete();
+
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post deleted successfully!',
             'type' => 'danger'
         ]);
     }
 
+    // Show manage users page (exclude admins)
     public function manageUsers()
-{
-    // Only fetch users who are NOT admin
-    $users = User::where('usertype', '!=', 'admin')->get();
-    return view('admin.manageUsers', compact('users'));
-}
+    {
+        $users = DB::table('users')
+                    ->where('usertype', '!=', 'admin')
+                    ->get();
 
+        return view('admin.manageUsers', compact('users'));
+    }
+
+    // Ban user
     public function banUser($id)
     {
-        $user = User::findOrFail($id);
-        $user->is_banned = 1;
-        $user->save();
+        DB::table('users')
+            ->where('id', $id)
+            ->update(['is_banned' => 1]);
 
-        return redirect()->back()->with(['message' => 'User banned successfully!', 'type' => 'warning']);
+        return redirect()->back()->with([
+            'message' => 'User banned successfully!',
+            'type' => 'warning'
+        ]);
     }
 
+    // Unban user
     public function unbanUser($id)
     {
-        $user = User::findOrFail($id);
-        $user->is_banned = 0;
-        $user->save();
+        DB::table('users')
+            ->where('id', $id)
+            ->update(['is_banned' => 0]);
 
-        return redirect()->back()->with(['message' => 'User unbanned successfully!', 'type' => 'success']);
+        return redirect()->back()->with([
+            'message' => 'User unbanned successfully!',
+            'type' => 'success'
+        ]);
     }
 
+    // Delete user
     public function deleteUser($id)
     {
-        $user = User::findOrFail($id);
-        $user->delete();
+        DB::table('users')
+            ->where('id', $id)
+            ->delete();
 
-        return redirect()->back()->with(['message' => 'User deleted successfully!', 'type' => 'danger']);
+        return redirect()->back()->with([
+            'message' => 'User deleted successfully!',
+            'type' => 'danger'
+        ]);
     }
-
 }
-
-

@@ -1,11 +1,13 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use App\Models\Post;
-use App\Models\User;
-use App\Models\Follow;
+// Models are no longer needed here as we are using raw SQL for all operations.
+// use App\Models\Post;
+// use App\Models\User;
+// use App\Models\Follow;
 use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
@@ -16,408 +18,379 @@ class HomeController extends Controller
     }
 
     public function services()
-{
-    $totalUsers = DB::select('SELECT COUNT(*) AS total FROM users')[0]->total;
-    return view('home.services', compact('totalUsers'));
-}
-
+    {
+        // This was already a raw SQL query.
+        $totalUsers = DB::select('SELECT COUNT(*) AS total FROM users')[0]->total;
+        return view('home.services', compact('totalUsers'));
+    }
 
     public function usersList()
-{
-    // Raw SQL query
-    $users = DB::select('SELECT id, name, email, phone, usertype FROM users'); // changed role -> usertype
+    {
+        // This was already a raw SQL query.
+        $users = DB::select('SELECT id, name, email, phone, usertype FROM users');
+        return view('home.users_list', compact('users'));
+    }
 
-    return view('home.users_list', compact('users'));
-}
+    // Step 1: Page with just the Add Post button
+    public function showAddDataButton()
+    {
+        return view('home.addData');
+    }
 
-// Step 1: Page with just the Add Post button
-public function showAddDataButton()
-{
-    return view('home.addData'); // Blade with only button
-}
+    // Step 2: Actual Add Post form
+    public function showAddPostForm()
+    {
+        // CONVERTED: Was DB::table('categories')->get();
+        $categories = DB::select('SELECT * FROM categories');
+        return view('home.addPost', compact('categories'));
+    }
 
-// Step 2: Actual Add Post form
-public function showAddPostForm()
-{
-    $categories = DB::table('categories')->get();
-    return view('home.addPost', compact('categories'));
-}
+    // Step 3: Store post in DB
+    public function storePost(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'category_id' => 'nullable|integer',
+            'category_name' => 'nullable|string|max:255',
+        ]);
 
-// Step 3: Store post in DB
-public function storePost(Request $request)
-{
-    // Validate input
-    $request->validate([
-        'title' => 'required|string|max:255',
-        'content' => 'required|string',
-        'category_id' => 'nullable|integer',
-        'category_name' => 'nullable|string|max:255', // new category input
-    ]);
+        $category_id = null;
+        $now = now();
 
-    $category_id = null;
+        if ($request->filled('category_name')) {
+            // CONVERTED: Check if category exists. DB::select returns an array.
+            $categoryResult = DB::select('SELECT id FROM categories WHERE name = ? LIMIT 1', [$request->category_name]);
+            $category = $categoryResult[0] ?? null;
 
-    // If user typed a new category
-    if ($request->filled('category_name')) {
-        // Check if this category already exists
-        $category = DB::table('categories')->where('name', $request->category_name)->first();
-        if ($category) {
-            $category_id = $category->id;
-        } else {
-            // Create new category and get its ID
-            $category_id = DB::table('categories')->insertGetId([
-                'name' => $request->category_name,
-                'created_at' => now(),
-                'updated_at' => now()
+            if ($category) {
+                $category_id = $category->id;
+            } else {
+                // Create new category. DB::insert does not return the new ID.
+                DB::insert('INSERT INTO categories (name, created_at, updated_at) VALUES (?, ?, ?)', [
+                    $request->category_name,
+                    $now,
+                    $now
+                ]);
+                // We must fetch the ID of the new category.
+                $newCategoryResult = DB::select('SELECT id FROM categories WHERE name = ?', [$request->category_name]);
+                $category_id = $newCategoryResult[0]->id ?? null;
+            }
+        } 
+        elseif ($request->filled('category_id')) {
+            // CONVERTED: Verify category exists. !empty checks if the result array is not empty.
+            $existsResult = DB::select('SELECT 1 FROM categories WHERE id = ?', [$request->category_id]);
+            if (!empty($existsResult)) {
+                $category_id = $request->category_id;
+            }
+        }
+
+        // This was already a raw SQL query.
+        DB::insert("
+            INSERT INTO posts (user_id, title, content, views, category_id, status, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ", [
+            auth()->id(),
+            $request->title,
+            $request->content,
+            0,
+            $category_id,
+            'active',
+            $now,
+            $now
+        ]);
+
+        return redirect()->route('addPost')->with('success', 'Post added successfully!');
+    }
+
+    public function showAllPostsForLike()
+    {
+        $user_id = auth()->id();
+
+        // This was already a raw SQL query.
+        $posts = DB::select("SELECT * FROM posts ORDER BY created_at DESC");
+
+        // CONVERTED: Fetch liked posts by current user.
+        $likedResult = DB::select('SELECT post_id FROM likes WHERE user_id = ?', [$user_id]);
+        // The result is an array of objects, e.g., [{'post_id': 1}, {'post_id': 5}].
+        // We need to convert it to a simple array like [1, 5] to match the original pluck()->toArray().
+        $liked = array_column($likedResult, 'post_id');
+
+        // CONVERTED: Fetch saved posts by current user.
+        $savedResult = DB::select('SELECT post_id FROM post_user_saves WHERE user_id = ?', [$user_id]);
+        $saved = array_column($savedResult, 'post_id');
+
+        return view('home.likePost', compact('posts', 'liked', 'saved'));
+    }
+
+    public function likePost($id)
+    {
+        $user_id = auth()->id();
+        $now = now();
+
+        // CONVERTED: Check if already liked.
+        $existsResult = DB::select('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1', [$id, $user_id]);
+        
+        if (empty($existsResult)) {
+            // CONVERTED: Insert like.
+            DB::insert('INSERT INTO likes (post_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+                $id,
+                $user_id,
+                $now,
+                $now,
+            ]);
+
+            // --- New: Insert notification if post belongs to another user ---
+            // CONVERTED: Get post owner ID.
+            $postOwnerResult = DB::select('SELECT user_id FROM posts WHERE id = ? LIMIT 1', [$id]);
+            $postOwnerId = $postOwnerResult[0]->user_id ?? null;
+
+            if ($postOwnerId && $postOwnerId != $user_id) {
+                // CONVERTED: Insert notification.
+                DB::insert('INSERT INTO notifications (user_id, type, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+                    $postOwnerId,
+                    'like',
+                    json_encode(['liked_by' => $user_id, 'post_id' => $id]),
+                    $now,
+                    $now,
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Post liked!');
+    }
+
+    public function unlikePost($id)
+    {
+        $user_id = auth()->id();
+        
+        // CONVERTED: Was DB::table()->where()->delete().
+        DB::delete('DELETE FROM likes WHERE post_id = ? AND user_id = ?', [$id, $user_id]);
+
+        return redirect()->back()->with('success', 'Post unliked!');
+    }
+
+    public function showPostsForComment()
+    {
+        $user_id = auth()->id();
+
+        // CONVERTED: Get all posts.
+        $posts = DB::select('SELECT * FROM posts ORDER BY created_at DESC');
+
+        foreach ($posts as $post) {
+            // CONVERTED: Fetch comments with username for each post.
+            $post->comments = DB::select('
+                SELECT c.*, u.name as username 
+                FROM comments c 
+                JOIN users u ON c.user_id = u.id 
+                WHERE c.post_id = ?', 
+                [$post->id]
+            );
+
+            // CONVERTED: Check if current user has commented.
+            $userCommentedResult = DB::select('SELECT 1 FROM comments WHERE post_id = ? AND user_id = ? LIMIT 1', [$post->id, $user_id]);
+            $post->user_commented = !empty($userCommentedResult);
+        }
+
+        return view('home.commentPost', compact('posts'));
+    }
+
+    public function clearComments($id)
+    {
+        $user_id = auth()->id();
+
+        // CONVERTED: Delete comments by current user on a specific post.
+        DB::delete('DELETE FROM comments WHERE post_id = ? AND user_id = ?', [$id, $user_id]);
+
+        return redirect()->back()->with('success', 'Your comments have been cleared!');
+    }
+
+    public function savePost($id)
+    {
+        $user_id = auth()->id();
+
+        // CONVERTED: Check if already saved.
+        $existsResult = DB::select('SELECT 1 FROM post_user_saves WHERE post_id = ? AND user_id = ? LIMIT 1', [$id, $user_id]);
+
+        if (empty($existsResult)) {
+            // CONVERTED: Insert into saves table.
+            DB::insert('INSERT INTO post_user_saves (post_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+                $id,
+                $user_id,
+                now(),
+                now(),
             ]);
         }
-    } 
-    // If user selected an existing category from dropdown
-    elseif ($request->filled('category_id')) {
-        // Verify category exists
-        $exists = DB::table('categories')->where('id', $request->category_id)->exists();
-        if ($exists) {
-            $category_id = $request->category_id;
-        } else {
-            $category_id = null; // fallback if invalid
-        }
+
+        return redirect()->back()->with('success', 'Post saved!');
     }
 
-    // Insert post
-    DB::insert("
-        INSERT INTO posts (user_id, title, content, views, category_id, status, created_at, updated_at) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
-    ", [
-        auth()->id(),
-        $request->title,
-        $request->content,
-        0,
-        $category_id,
-        'active'
-    ]);
+    public function unsavePost($id)
+    {
+        $user_id = auth()->id();
 
-    return redirect()->route('addPost')->with('success', 'Post added successfully!');
-}
+        // CONVERTED: Delete from saves table.
+        DB::delete('DELETE FROM post_user_saves WHERE post_id = ? AND user_id = ?', [$id, $user_id]);
 
+        return redirect()->back()->with('success', 'Post unsaved!');
+    }
 
-public function showAllPostsForLike()
-{
-    $user_id = auth()->id();
+    public function commentPost(Request $request, $id)
+    {
+        $request->validate(['comment' => 'required|string|max:500']);
 
-    // Fetch all posts
-    $posts = DB::select("SELECT * FROM posts ORDER BY created_at DESC");
+        $user_id = auth()->id();
+        $now = now();
 
-    // Fetch liked posts by current user
-    $liked = DB::table('likes')
-        ->where('user_id', $user_id)
-        ->pluck('post_id')
-        ->toArray();
-
-    // Fetch saved posts by current user
-    $saved = DB::table('post_user_saves')
-        ->where('user_id', $user_id)
-        ->pluck('post_id')
-        ->toArray();
-
-    return view('home.likePost', compact('posts', 'liked', 'saved'));
-}
-
-
-public function likePost($id)
-{
-    $user_id = auth()->id();
-
-    // Check if already liked
-    $exists = DB::table('likes')
-        ->where('post_id', $id)
-        ->where('user_id', $user_id)
-        ->exists();
-
-    if(!$exists) {
-        // Insert like (existing functionality)
-        DB::table('likes')->insert([
-            'post_id' => $id,
-            'user_id' => $user_id,
-            'created_at' => now(),
-            'updated_at' => now(),
+        // CONVERTED: Insert comment.
+        DB::insert('INSERT INTO comments (post_id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+            $id,
+            $user_id,
+            $request->comment,
+            $now,
+            $now,
         ]);
 
-        // --- New: Insert notification if post belongs to another user ---
-        $postOwnerId = DB::table('posts')->where('id', $id)->value('user_id');
-        if ($postOwnerId && $postOwnerId != $user_id) { // don't notify self
-            DB::table('notifications')->insert([
-                'user_id' => $postOwnerId,
-                'type' => 'like',
-                'data' => json_encode([
-                    'liked_by' => $user_id,
-                    'post_id' => $id
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
+        // CONVERTED: Get post owner ID for notification.
+        $postOwnerResult = DB::select('SELECT user_id FROM posts WHERE id = ? LIMIT 1', [$id]);
+        $postOwnerId = $postOwnerResult[0]->user_id ?? null;
+
+        if ($postOwnerId && $postOwnerId != $user_id) {
+            // CONVERTED: Insert notification.
+            DB::insert('INSERT INTO notifications (user_id, type, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+                $postOwnerId,
+                'comment',
+                json_encode(['commented_by' => $user_id, 'post_id' => $id]),
+                $now,
+                $now,
             ]);
         }
+
+        return redirect()->back()->with('success', 'Comment added successfully!');
     }
 
-    return redirect()->back()->with('success', 'Post liked!');
-}
+    public function showNotifications()
+    {
+        // This was already using raw SQL queries. No changes needed.
+        $user_id = auth()->id();
+        $notifications = DB::select("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [$user_id]);
 
-
-public function unlikePost($id)
-{
-    $user_id = auth()->id();
-
-    DB::table('likes')
-        ->where('post_id', $id)
-        ->where('user_id', $user_id)
-        ->delete();
-
-    return redirect()->back()->with('success', 'Post unliked!');
-}
-
-// Show posts for commenting
-public function showPostsForComment()
-{
-    $user_id = auth()->id();
-
-    $posts = DB::table('posts')->orderBy('created_at', 'desc')->get();
-
-    foreach($posts as $post) {
-        // Fetch comments with username
-        $post->comments = DB::table('comments')
-            ->join('users', 'comments.user_id', '=', 'users.id')
-            ->where('comments.post_id', $post->id)
-            ->select('comments.*', 'users.name as username')
-            ->get();
-
-        // Check if current user has commented on this post
-        $post->user_commented = DB::table('comments')
-            ->where('post_id', $post->id)
-            ->where('user_id', $user_id)
-            ->exists();
+        foreach ($notifications as $notif) {
+            $data = json_decode($notif->data, true);
+            if ($notif->type === 'like' && isset($data['liked_by'], $data['post_id'])) {
+                $user = DB::select("SELECT name FROM users WHERE id = ?", [$data['liked_by']]);
+                $notif->liked_by_name = $user[0]->name ?? 'Unknown';
+                $post = DB::select("SELECT title FROM posts WHERE id = ?", [$data['post_id']]);
+                $notif->post_title = $post[0]->title ?? 'Unknown Post';
+            }
+            if ($notif->type === 'comment' && isset($data['commented_by'], $data['post_id'])) {
+                $user = DB::select("SELECT name FROM users WHERE id = ?", [$data['commented_by']]);
+                $notif->commented_by_name = $user[0]->name ?? 'Unknown';
+                $post = DB::select("SELECT title FROM posts WHERE id = ?", [$data['post_id']]);
+                $notif->post_title = $post[0]->title ?? 'Unknown Post';
+            }
+            $notif->data = $data;
+        }
+        return view('home.notifications', compact('notifications'));
     }
 
-    return view('home.commentPost', compact('posts'));
-}
+    public function deleteNotification($id)
+    {
+        $user_id = auth()->id();
 
+        // CONVERTED: Delete a specific notification for the user.
+        DB::delete('DELETE FROM notifications WHERE id = ? AND user_id = ?', [$id, $user_id]);
 
-public function clearComments($id)
-{
-    $user_id = auth()->id();
-
-    // Delete only comments by current user on that post
-    DB::table('comments')->where('post_id', $id)->where('user_id', $user_id)->delete();
-
-    return redirect()->back()->with('success', 'Your comments have been cleared!');
-}
-
-public function savePost($id)
-{
-    $user_id = auth()->id();
-
-    // Check if already saved
-    $exists = DB::table('post_user_saves')
-        ->where('post_id', $id)
-        ->where('user_id', $user_id)
-        ->exists();
-
-    if (!$exists) {
-        DB::table('post_user_saves')->insert([
-            'post_id' => $id,
-            'user_id' => $user_id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        return redirect()->back()->with('success', 'Notification deleted successfully!');
     }
 
-    return redirect()->back()->with('success', 'Post saved!');
-}
+    public function showFollowers()
+    {
+        $user = Auth::user();
 
-public function unsavePost($id)
-{
-    $user_id = auth()->id();
+        // CONVERTED: Get all users except logged-in user (was User::where).
+        $allUsers = DB::select('SELECT * FROM users WHERE id != ?', [$user->id]);
 
-    DB::table('post_user_saves')
-        ->where('post_id', $id)
-        ->where('user_id', $user_id)
-        ->delete();
+        // CONVERTED: Get IDs of users the logged-in user is following (was Follow::where).
+        $followingResult = DB::select('SELECT following_id FROM follows WHERE follower_id = ?', [$user->id]);
+        // Convert array of objects to a simple array of IDs.
+        $followingIds = array_column($followingResult, 'following_id');
 
-    return redirect()->back()->with('success', 'Post unsaved!');
-}
-
-
-public function commentPost(Request $request, $id)
-{
-    $request->validate(['comment' => 'required|string|max:500']);
-
-    $user_id = auth()->id();
-
-    DB::table('comments')->insert([
-        'post_id' => $id,
-        'user_id' => $user_id,
-        'content' => $request->comment,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    // Insert notification
-    $postOwnerId = DB::table('posts')->where('id', $id)->value('user_id');
-    if ($postOwnerId != $user_id) { // don't notify self
-        DB::table('notifications')->insert([
-            'user_id' => $postOwnerId,
-            'type' => 'comment',
-            'data' => json_encode(['commented_by' => $user_id, 'post_id' => $id]),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        return view('home.follower', compact('allUsers', 'followingIds'));
     }
 
-    return redirect()->back()->with('success', 'Comment added successfully!');
-}
+    public function followUser($id)
+    {
+        $user = Auth::user();
 
-public function showNotifications()
-{
-    $user_id = auth()->id();
+        // CONVERTED: Prevent duplicate follows (was Follow::where()->exists()).
+        $existsResult = DB::select('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1', [$user->id, $id]);
 
-    // Fetch all notifications for this user
-    $notifications = DB::select("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [$user_id]);
-
-    // Loop through each notification and fetch related names/titles
-    foreach ($notifications as $notif) {
-        $data = json_decode($notif->data, true);
-
-        if ($notif->type === 'like' && isset($data['liked_by'], $data['post_id'])) {
-            // Get username of the user who liked
-            $user = DB::select("SELECT name FROM users WHERE id = ?", [$data['liked_by']]);
-            $notif->liked_by_name = $user[0]->name ?? 'Unknown';
-
-            // Get post title
-            $post = DB::select("SELECT title FROM posts WHERE id = ?", [$data['post_id']]);
-            $notif->post_title = $post[0]->title ?? 'Unknown Post';
+        if (empty($existsResult)) {
+            // CONVERTED: Create the follow relationship (was Follow::create).
+            DB::insert('INSERT INTO follows (follower_id, following_id, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+                $user->id,
+                $id,
+                now(),
+                now()
+            ]);
         }
 
-        if ($notif->type === 'comment' && isset($data['commented_by'], $data['post_id'])) {
-            // Get username of the user who commented
-            $user = DB::select("SELECT name FROM users WHERE id = ?", [$data['commented_by']]);
-            $notif->commented_by_name = $user[0]->name ?? 'Unknown';
+        return redirect()->back();
+    }
 
-            // Get post title
-            $post = DB::select("SELECT title FROM posts WHERE id = ?", [$data['post_id']]);
-            $notif->post_title = $post[0]->title ?? 'Unknown Post';
+    public function unfollowUser($id)
+    {
+        $user = Auth::user();
+        
+        // CONVERTED: Delete the follow relationship (was Follow::where()->delete()).
+        DB::delete('DELETE FROM follows WHERE follower_id = ? AND following_id = ?', [$user->id, $id]);
+
+        return redirect()->back();
+    }
+
+    public function reportPost($id)
+    {
+        $user_id = auth()->id();
+
+        // CONVERTED: Check if already reported.
+        $existsResult = DB::select('SELECT 1 FROM reports WHERE post_id = ? AND reported_by = ? LIMIT 1', [$id, $user_id]);
+
+        if (empty($existsResult)) {
+            // CONVERTED: Insert report.
+            DB::insert('INSERT INTO reports (post_id, reported_by, reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+                $id,
+                $user_id,
+                'Inappropriate content',
+                now(),
+                now(),
+            ]);
         }
-
-        // Keep original data for other purposes
-        $notif->data = $data;
+        return redirect()->back()->with('success', 'Post reported!');
     }
 
-    return view('home.notifications', compact('notifications'));
-}
+    public function undoReportPost($id)
+    {
+        $user_id = auth()->id();
+        
+        // CONVERTED: Delete report.
+        DB::delete('DELETE FROM reports WHERE post_id = ? AND reported_by = ?', [$id, $user_id]);
 
-public function deleteNotification($id)
-{
-    $user_id = auth()->id();
-
-    DB::table('notifications')
-        ->where('id', $id)
-        ->where('user_id', $user_id)
-        ->delete();
-
-    return redirect()->back()->with('success', 'Notification deleted successfully!');
-}
-
-public function showFollowers()
-{
-    $user = Auth::user();
-
-    // Get all users except logged-in user
-    $allUsers = User::where('id', '!=', $user->id)->get();
-
-    // Get IDs of users the logged-in user is following
-    $followingIds = Follow::where('follower_id', $user->id)
-                          ->pluck('following_id')
-                          ->toArray();
-
-    return view('home.follower', compact('allUsers', 'followingIds'));
-}
-
-public function followUser($id)
-{
-    $user = Auth::user();
-
-    // Prevent duplicate follows
-    if (!Follow::where('follower_id', $user->id)->where('following_id', $id)->exists()) {
-        Follow::create([
-            'follower_id' => $user->id,
-            'following_id' => $id,
-        ]);
+        return redirect()->back()->with('success', 'Report removed!');
+    }
+    
+    public function switchToAdminDashboard()
+    {
+        session()->forget('view_as_user');
+        return redirect()->route('home');
     }
 
-    return redirect()->back();
-}
+    public function increaseView($id)
+    {
+        // CONVERTED: Was Post::findOrFail()->save(). This is more efficient.
+        // It directly increments the value in the database without fetching the model first.
+        DB::update('UPDATE posts SET views = views + 1 WHERE id = ?', [$id]);
 
-public function unfollowUser($id)
-{
-    $user = Auth::user();
-
-    Follow::where('follower_id', $user->id)
-          ->where('following_id', $id)
-          ->delete();
-
-    return redirect()->back();
-}
-
-public function reportPost($id)
-{
-    $user_id = auth()->id();
-
-    // Check if already reported
-    $exists = DB::table('reports')
-        ->where('post_id', $id)
-        ->where('reported_by', $user_id)
-        ->exists();
-
-    if (!$exists) {
-        DB::table('reports')->insert([
-            'post_id' => $id,
-            'reported_by' => $user_id,
-            'reason' => 'Inappropriate content', // optional, you can add a reason input later
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        return back()->with('success', 'View count updated!');
     }
-
-    return redirect()->back()->with('success', 'Post reported!');
-}
-
-public function undoReportPost($id)
-{
-    $user_id = auth()->id();
-
-    DB::table('reports')
-        ->where('post_id', $id)
-        ->where('reported_by', $user_id)
-        ->delete();
-
-    return redirect()->back()->with('success', 'Report removed!');
-}
-
-public function switchToAdminDashboard()
-{
-    // Stop viewing as user
-    session()->forget('view_as_user');
-
-    // Redirect to normal user homepage instead of admin
-    return redirect()->route('home'); // <-- this points to /home
-}
-
-public function increaseView($id)
-{
-    $post = Post::findOrFail($id);
-
-    // Increment views by 1
-    $post->views += 1;
-    $post->save();
-
-    return back()->with('success', 'View count updated!');
-}
-
-
 }
