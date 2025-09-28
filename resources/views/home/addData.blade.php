@@ -80,7 +80,7 @@
     <div class="card">
         <h2>Insert Data</h2>
         <a href="{{ route('addPost') }}" class="btn-add-post mb-3">➕ Add Post</a>
-        <a href="{{ route('likePostPage') }}" class="btn-add-post">❤️ Like or Save a Post</a>
+        <a href="{{ route('likePostPage') }}" class="btn-add-post">❤️ Post Operations</a>
         <a href="{{ route('commentPostPage') }}" class="btn-add-post mb-3">💬 Comment on Post</a>
         <a href="{{ route('showNotifications') }}" class="btn-add-post">🔔 Show Notifications</a>
         <a href="{{ route('followerPage') }}" class="btn-add-post">👥 Followers</a>

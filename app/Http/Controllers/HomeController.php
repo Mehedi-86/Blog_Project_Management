@@ -18,11 +18,16 @@ class HomeController extends Controller
     }
 
     public function services()
-    {
-        // This was already a raw SQL query.
-        $totalUsers = DB::select('SELECT COUNT(*) AS total FROM users')[0]->total;
-        return view('home.services', compact('totalUsers'));
-    }
+{
+    // Count total users
+    $totalUsers = DB::select('SELECT COUNT(*) AS total FROM users')[0]->total;
+
+    // Count total posts
+    $totalPosts = DB::select('SELECT COUNT(*) AS total FROM posts')[0]->total;
+
+    return view('home.services', compact('totalUsers', 'totalPosts'));
+}
+
 
     public function usersList()
     {
@@ -108,7 +113,12 @@ class HomeController extends Controller
         $user_id = auth()->id();
 
         // This was already a raw SQL query.
-        $posts = DB::select("SELECT * FROM posts ORDER BY created_at DESC");
+        $posts = DB::select("
+            SELECT posts.*, users.name 
+            FROM posts
+            JOIN users ON posts.user_id = users.id
+            ORDER BY posts.created_at DESC
+        ");
 
         // CONVERTED: Fetch liked posts by current user.
         $likedResult = DB::select('SELECT post_id FROM likes WHERE user_id = ?', [$user_id]);
@@ -175,7 +185,12 @@ class HomeController extends Controller
         $user_id = auth()->id();
 
         // CONVERTED: Get all posts.
-        $posts = DB::select('SELECT * FROM posts ORDER BY created_at DESC');
+        $posts = DB::select("
+            SELECT posts.*, users.name 
+            FROM posts
+            JOIN users ON posts.user_id = users.id
+            ORDER BY posts.created_at DESC
+        ");
 
         foreach ($posts as $post) {
             // CONVERTED: Fetch comments with username for each post.
@@ -393,4 +408,157 @@ class HomeController extends Controller
 
         return back()->with('success', 'View count updated!');
     }
+
+    public function editPost($id)
+{
+    $post = DB::select("SELECT * FROM posts WHERE id = ?", [$id])[0] ?? null;
+
+    if (!$post || $post->user_id != auth()->id()) {
+        return redirect()->back()->with('error', 'Unauthorized action.');
+    }
+
+    return view('home.editPost', compact('post'));
+}
+
+public function updatePost(Request $request, $id)
+{
+    $request->validate([
+        'title' => 'required|string|max:255',
+        'content' => 'required|string',
+    ]);
+
+    $post = DB::select("SELECT * FROM posts WHERE id = ?", [$id])[0] ?? null;
+
+    if (!$post || $post->user_id != auth()->id()) {
+        return redirect()->back()->with('error', 'Unauthorized action.');
+    }
+
+    DB::update("UPDATE posts SET title = ?, content = ?, updated_at = ? WHERE id = ?", [
+        $request->title,
+        $request->content,
+        now(),
+        $id
+    ]);
+
+    return redirect()->back()->with('success', 'Post updated successfully!');
+}
+
+public function listPosts()
+{
+    $posts = DB::select("
+    SELECT posts.id, posts.title, posts.views, posts.user_id, users.name, categories.name AS category_name
+    FROM posts
+    JOIN users ON posts.user_id = users.id
+    LEFT JOIN categories ON posts.category_id = categories.id
+    ORDER BY posts.created_at DESC
+");
+
+
+    return view('home.posts_list', compact('posts'));
+}
+
+public function likedPosts()
+{
+    $user_id = auth()->id();
+
+    // Get all posts liked by the current user with category names
+    $posts = DB::select("
+        SELECT p.id, p.title, p.views, p.status, c.name AS category_name
+        FROM likes l
+        JOIN posts p ON l.post_id = p.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE l.user_id = ?
+        ORDER BY l.created_at DESC
+    ", [$user_id]);
+
+    return view('home.posts_liked', compact('posts'));
+}
+
+public function commentedPosts()
+{
+    $user_id = auth()->id();
+
+    // Get posts the user has commented on with category name and latest comment
+    $posts = DB::select("
+        SELECT p.id, p.title, p.views, p.status, c.name AS category_name,
+               cm.content AS user_comment
+        FROM posts p
+        JOIN comments cm ON cm.post_id = p.id AND cm.user_id = ?
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE cm.id = (
+            SELECT MAX(id) 
+            FROM comments 
+            WHERE post_id = p.id AND user_id = ?
+        )
+        ORDER BY cm.created_at DESC
+    ", [$user_id, $user_id]);
+
+    return view('home.posts_commented', compact('posts'));
+}
+
+public function myPosts()
+{
+    $user_id = auth()->id();
+
+    // Get all posts authored by logged-in user with category name
+    $posts = DB::select("
+        SELECT p.id, p.title, p.views, p.status, c.name AS category_name
+        FROM posts p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.user_id = ?
+        ORDER BY p.created_at DESC
+    ", [$user_id]);
+
+    return view('home.posts_by_me', compact('posts'));
+}
+
+public function postsSavedByMe()
+{
+    $user_id = auth()->id();
+
+    // Fetch posts saved by the logged-in user with category name
+    $posts = DB::select("
+        SELECT p.id, p.title, p.views, p.status, c.name AS category_name
+        FROM post_user_saves s
+        JOIN posts p ON s.post_id = p.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE s.user_id = ?
+        ORDER BY s.created_at DESC
+    ", [$user_id]);
+
+    return view('home.posts_saved', compact('posts'));
+}
+
+public function followersOfMe()
+{
+    $user_id = auth()->id();
+
+    // Fetch all users who follow the logged-in user
+    $followers = DB::select("
+        SELECT u.id, u.name, u.email, u.phone, u.usertype, f.created_at AS followed_at
+        FROM follows f
+        JOIN users u ON f.follower_id = u.id
+        WHERE f.following_id = ?
+        ORDER BY f.created_at DESC
+    ", [$user_id]);
+
+    return view('home.followers_of_me', compact('followers'));
+}
+
+public function whomIFollow()
+{
+    $user_id = auth()->id();
+
+    // Fetch all users the logged-in user is following
+    $followings = DB::select("
+        SELECT u.id, u.name, u.email, u.phone, u.usertype, f.created_at AS followed_at
+        FROM follows f
+        JOIN users u ON f.following_id = u.id
+        WHERE f.follower_id = ?
+        ORDER BY f.created_at DESC
+    ", [$user_id]);
+
+    return view('home.whom_i_follow', compact('followings'));
+}
+
 }

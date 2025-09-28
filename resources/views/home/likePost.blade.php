@@ -114,7 +114,8 @@
 
             <div class="card">
                 <h4>{{ $post->title }}</h4>
-                <p>{{ $post->content }}</p>
+                <p style="margin-bottom: 10px;">{{ $post->content }}</p>
+                <small>📌 Post by <strong>{{ $post->name }}</strong></small>
 
                 <div class="btn-container">
                     <!-- Like / Unlike -->
@@ -166,6 +167,15 @@
                             👁️ View ({{ $post->views }})
                         </button>
                     </form>
+
+                    <!-- Update Button (only visible to post owner) -->
+                        @if(Auth::id() === $post->user_id)
+                            <a href="{{ route('editPost', $post->id) }}" 
+                            class="btn btn-warning" 
+                            style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
+                            ✏️ Update
+                            </a>
+                        @endif
                 </div>
             </div>
         @endforeach

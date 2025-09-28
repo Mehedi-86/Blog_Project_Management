@@ -112,3 +112,25 @@ Route::get('/ban-user/{id}', [AdminController::class, 'banUser'])->name('admin.b
 Route::get('/unban-user/{id}', [AdminController::class, 'unbanUser'])->name('admin.unban.user');
 
 Route::get('/delete-user/{id}', [AdminController::class, 'deleteUser'])->name('admin.delete.user');
+
+Route::get('/posts/{id}/edit', [HomeController::class, 'editPost'])->name('editPost');
+
+Route::post('/posts/{id}/update', [HomeController::class, 'updatePost'])->name('updatePost');
+
+Route::get('/posts-list', [App\Http\Controllers\HomeController::class, 'listPosts'])->name('posts.list');
+
+Route::get('/posts-liked', [HomeController::class, 'likedPosts'])->name('posts.liked');
+
+Route::get('/posts-commented', [HomeController::class, 'commentedPosts'])->name('posts.commented');
+
+// Posts By Me
+Route::get('/my-posts', [HomeController::class, 'myPosts'])->name('posts.byMe');
+
+// Posts Saved By Me
+Route::get('/posts-saved', [HomeController::class, 'postsSavedByMe'])->name('posts.savedByMe');
+
+// Followers of Me
+Route::get('/followers-of-me', [HomeController::class, 'followersOfMe'])->name('followers.ofMe');
+
+// Whom I Follow
+Route::get('/whom-i-follow', [HomeController::class, 'whomIFollow'])->name('whom.iFollow');
