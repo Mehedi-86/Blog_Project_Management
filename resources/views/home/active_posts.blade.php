@@ -16,6 +16,7 @@
             padding: 12px 20px;
             border: 1px solid #ddd;
             text-align: center;
+            vertical-align: middle; /* Ensures content is vertically centered */
         }
 
         .posts-table thead {
@@ -39,6 +40,24 @@
             font-weight: 700;
             color: #333;
         }
+
+        /* --- New Badge Styling --- */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 0.75rem; /* Smaller font size */
+            font-weight: 700;
+            color: #fff;
+            background-color: #6c757d; /* Default color */
+            border-radius: 12px; /* Pill shape */
+            margin-left: 8px; /* Space between title and badge */
+        }
+        
+        /* Specific colors for different statuses */
+        .badge-hot { background-color: #dc3545; } /* Red for Hot */
+        .badge-popular { background-color: #28a745; } /* Green for Popular */
+        .badge-new { background-color: #17a2b8; } /* Blue for New */
+
     </style>
 </head>
 <body>
@@ -61,7 +80,24 @@
             @foreach($posts as $post)
             <tr>
                 <td>{{ $post->id }}</td>
-                <td>{{ $post->title }}</td>
+                <!-- This is the updated table cell -->
+                <td>
+                    {{ $post->title }}
+                    
+                    @php
+                        // Determine badge class based on the status from your query
+                        $badgeClass = '';
+                        if ($post->popularity_status === '🔥 Hot') {
+                            $badgeClass = 'badge-hot';
+                        } elseif ($post->popularity_status === '👍 Popular') {
+                            $badgeClass = 'badge-popular';
+                        } elseif ($post->popularity_status === '✨ New') {
+                            $badgeClass = 'badge-new';
+                        }
+                    @endphp
+
+                    <span class="badge {{ $badgeClass }}">{{ $post->popularity_status }}</span>
+                </td>
                 <td>{{ $post->category_name ?? 'N/A' }}</td>
                 <td>{{ $post->author_name }}</td>
                 <td>{{ $post->views }}</td>

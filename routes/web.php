@@ -144,3 +144,8 @@ Route::get('/rejected-posts', [HomeController::class, 'rejectedPosts'])->name('p
 Route::get('/reports/my-posts', [HomeController::class, 'reportsOnMyPosts'])->name('reports.my_posts');
 
 Route::get('/reports-by-me', [HomeController::class, 'reportsByMe'])->name('reports.by_me');
+
+// Show Active and Banned Users (read-only)
+Route::get('/show-users', [HomeController::class, 'showUsers'])->name('users.show');
+
+Route::get('/leaderboard', [HomeController::class, 'leaderboard'])->name('leaderboard');

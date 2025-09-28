@@ -14,7 +14,23 @@ class HomeController extends Controller
 {
     public function homepage()
     {
-        return view('home.homepage');
+        // Copy the exact same query from your leaderboard() function
+        $topPosts = DB::select("
+            WITH RankedPosts AS (
+                SELECT 
+                    p.title,
+                    p.views,
+                    c.name AS category_name,
+                    ROW_NUMBER() OVER(PARTITION BY c.id ORDER BY p.views DESC) as rn
+                FROM posts p
+                JOIN categories c ON p.category_id = c.id
+                WHERE p.status = 'active'
+            )
+            SELECT * FROM RankedPosts WHERE rn <= 3;
+        ");
+    
+        // Pass the $topPosts variable to your homepage view
+        return view('home.homepage', compact('topPosts'));
     }
 
     public function services()
@@ -59,54 +75,71 @@ class HomeController extends Controller
             'category_id' => 'nullable|integer',
             'category_name' => 'nullable|string|max:255',
         ]);
-
-        $category_id = null;
-        $now = now();
-
-        if ($request->filled('category_name')) {
-            // CONVERTED: Check if category exists. DB::select returns an array.
-            $categoryResult = DB::select('SELECT id FROM categories WHERE name = ? LIMIT 1', [$request->category_name]);
-            $category = $categoryResult[0] ?? null;
-
-            if ($category) {
-                $category_id = $category->id;
-            } else {
-                // Create new category. DB::insert does not return the new ID.
-                DB::insert('INSERT INTO categories (name, created_at, updated_at) VALUES (?, ?, ?)', [
-                    $request->category_name,
-                    $now,
-                    $now
-                ]);
-                // We must fetch the ID of the new category.
-                $newCategoryResult = DB::select('SELECT id FROM categories WHERE name = ?', [$request->category_name]);
-                $category_id = $newCategoryResult[0]->id ?? null;
+    
+        // Start the transaction
+        DB::beginTransaction();
+    
+        try {
+            $category_id = null;
+            $now = now();
+    
+            if ($request->filled('category_name')) {
+                // This block contains database reads and a potential write
+                $categoryResult = DB::select('SELECT id FROM categories WHERE name = ? LIMIT 1', [$request->category_name]);
+                $category = $categoryResult[0] ?? null;
+    
+                if ($category) {
+                    $category_id = $category->id;
+                } else {
+                    DB::insert('INSERT INTO categories (name, created_at, updated_at) VALUES (?, ?, ?)', [
+                        $request->category_name,
+                        $now,
+                        $now
+                    ]);
+                    $newCategoryResult = DB::select('SELECT id FROM categories WHERE name = ?', [$request->category_name]);
+                    $category_id = $newCategoryResult[0]->id ?? null;
+                }
+            } 
+            elseif ($request->filled('category_id')) {
+                // This block contains a database read
+                $existsResult = DB::select('SELECT 1 FROM categories WHERE id = ?', [$request->category_id]);
+                if (!empty($existsResult)) {
+                    $category_id = $request->category_id;
+                }
             }
-        } 
-        elseif ($request->filled('category_id')) {
-            // CONVERTED: Verify category exists. !empty checks if the result array is not empty.
-            $existsResult = DB::select('SELECT 1 FROM categories WHERE id = ?', [$request->category_id]);
-            if (!empty($existsResult)) {
-                $category_id = $request->category_id;
-            }
+    
+            // The final database write
+            DB::insert("
+                INSERT INTO posts (user_id, title, content, views, category_id, status, created_at, updated_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ", [
+                auth()->id(),
+                $request->title,
+                $request->content,
+                0,
+                $category_id,
+                'active',
+                $now,
+                $now
+            ]);
+    
+            // If all database operations were successful, commit them permanently.
+            DB::commit();
+    
+            return redirect()->route('addPost')->with('success', 'Post added successfully!');
+    
+        } catch (\Exception $e) {
+            // If any error occurred in the 'try' block, undo all database changes.
+            DB::rollBack();
+    
+            // Optional: Log the actual error for debugging
+            // Log::error('Post creation failed: ' . $e->getMessage());
+    
+            // Redirect back with an error message for the user
+            return redirect()->back()->with('error', 'Could not add post. An error occurred.');
         }
-
-        // This was already a raw SQL query.
-        DB::insert("
-            INSERT INTO posts (user_id, title, content, views, category_id, status, created_at, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ", [
-            auth()->id(),
-            $request->title,
-            $request->content,
-            0,
-            $category_id,
-            'active',
-            $now,
-            $now
-        ]);
-
-        return redirect()->route('addPost')->with('success', 'Post added successfully!');
     }
+        
 
     public function showAllPostsForLike()
     {
@@ -577,11 +610,15 @@ public function postDetails()
             p.id,
             p.title,
             c.name AS category_name,
-            (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS likes_count,
-            (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comments_count,
-            (SELECT COUNT(*) FROM reports r WHERE r.post_id = p.id) AS reports_count
+            COUNT(DISTINCT l.id) AS likes_count,
+            COUNT(DISTINCT cm.id) AS comments_count,
+            COUNT(DISTINCT r.id) AS reports_count
         FROM posts p
         LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN likes l ON l.post_id = p.id
+        LEFT JOIN comments cm ON cm.post_id = p.id
+        LEFT JOIN reports r ON r.post_id = p.id
+        GROUP BY p.id, p.title, c.name -- Group all results by post
         ORDER BY p.created_at DESC
     ");
 
@@ -590,13 +627,22 @@ public function postDetails()
 
 public function activePosts()
 {
-    $posts = \DB::table('posts')
-        ->join('categories', 'posts.category_id', '=', 'categories.id')
-        ->join('users', 'posts.user_id', '=', 'users.id') // join users for author
-        ->select('posts.*', 'categories.name as category_name', 'users.name as author_name')
-        ->where('posts.status', 'active')
-        ->orderBy('posts.created_at', 'desc')
-        ->get();
+    $posts = DB::select("
+        SELECT 
+            p.*, 
+            c.name as category_name, 
+            u.name as author_name,
+            CASE 
+                WHEN p.views >= 20 THEN '🔥 Hot'
+                WHEN p.views >= 10 THEN '👍 Popular'
+                ELSE '✨ New'
+            END AS popularity_status
+        FROM posts p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        WHERE p.status = 'active'
+        ORDER BY p.created_at DESC
+    ");
 
     return view('home.active_posts', compact('posts'));
 }
@@ -660,4 +706,31 @@ public function reportsByMe()
     return view('home.reports_by_me', compact('reports'));
 }
 
+public function showUsers() {
+    $activeUsers = DB::table('users')->where('is_banned', 0)->get();
+    $bannedUsers = DB::table('users')->where('is_banned', 1)->get();
+    return view('home.showUsers', compact('activeUsers', 'bannedUsers'));
+}
+
+public function leaderboard()
+{
+    $topPosts = DB::select("
+        -- This is a CTE (Common Table Expression) to make the query readable
+        WITH RankedPosts AS (
+            SELECT 
+                p.title,
+                p.views,
+                c.name AS category_name,
+                -- The Window Function starts here!
+                ROW_NUMBER() OVER(PARTITION BY c.id ORDER BY p.views DESC) as rn
+            FROM posts p
+            JOIN categories c ON p.category_id = c.id
+            WHERE p.status = 'active'
+        )
+        -- Now, select only the top 3 from our ranked list
+        SELECT * FROM RankedPosts WHERE rn <= 3;
+    ");
+
+    return view('home.leaderboard', compact('topPosts'));
+}
 }

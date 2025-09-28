@@ -92,6 +92,9 @@
         <a href="{{ route('reports.by_me') }}" class="stats-button">
             Posts Reported By Me
         </a>
+        <a href="{{ route('users.show') }}" class="stats-button">
+            Show Active and Banned Users
+        </a>
     </div>
 
     @include('home.footer')

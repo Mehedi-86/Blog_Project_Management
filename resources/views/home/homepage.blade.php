@@ -14,9 +14,8 @@
       </div>
       <!-- header section end -->
       
-      <!-- Schema diagram start -->
-       
-       <!-- schema diagram end -->
+      <!-- Include the leaderboard section -->
+       @include('home.leaderboard')
       
       
       @include('home.footer')
