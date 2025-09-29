@@ -799,5 +799,77 @@ public function addActivity(Request $request)
     return redirect()->route('portfolio.manage')->with('success', 'Activity added successfully!');
 }
 
+// Update Work Experience
+public function updateWorkExperience(Request $request, $id)
+{
+    $request->validate([
+        'workplace_name' => 'required|string|max:255',
+        'designation' => 'required|string|max:255',
+        'year' => 'required|string|max:255',
+    ]);
+
+    DB::update(
+        "UPDATE work_experiences SET workplace_name = ?, designation = ?, year = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        [$request->workplace_name, $request->designation, $request->year, now(), $id, auth()->id()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Work experience updated successfully!');
+}
+
+// Delete Work Experience
+public function deleteWorkExperience($id)
+{
+    DB::delete("DELETE FROM work_experiences WHERE id = ? AND user_id = ?", [$id, auth()->id()]);
+    return redirect()->route('portfolio.manage')->with('success', 'Work experience deleted successfully!');
+}
+
+// Update Education
+public function updateEducation(Request $request, $id)
+{
+    $request->validate([
+        'school_name' => 'required|string|max:255',
+        'degree' => 'required|string|max:255',
+        'graduation_year' => 'required|string|max:255',
+    ]);
+
+    DB::update(
+        "UPDATE educations SET school_name = ?, degree = ?, graduation_year = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        [$request->school_name, $request->degree, $request->graduation_year, now(), $id, auth()->id()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Education updated successfully!');
+}
+
+// Delete Education
+public function deleteEducation($id)
+{
+    DB::delete("DELETE FROM educations WHERE id = ? AND user_id = ?", [$id, auth()->id()]);
+    return redirect()->route('portfolio.manage')->with('success', 'Education deleted successfully!');
+}
+
+// Update Activity
+public function updateActivity(Request $request, $id)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'time_duration' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'github_link' => 'nullable|url|max:255',
+    ]);
+
+    DB::update(
+        "UPDATE extra_curricular_activities SET name = ?, time_duration = ?, description = ?, github_link = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        [$request->name, $request->time_duration, $request->description, $request->github_link, now(), $id, auth()->id()]
+    );
+
+    return redirect()->route('portfolio.manage')->with('success', 'Activity updated successfully!');
+}
+
+// Delete Activity
+public function deleteActivity($id)
+{
+    DB::delete("DELETE FROM extra_curricular_activities WHERE id = ? AND user_id = ?", [$id, auth()->id()]);
+    return redirect()->route('portfolio.manage')->with('success', 'Activity deleted successfully!');
+}
 
 }

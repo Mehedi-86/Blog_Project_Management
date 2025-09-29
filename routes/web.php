@@ -161,4 +161,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/portfolio/work', [HomeController::class, 'addWorkExperience'])->name('portfolio.add.work');
     Route::post('/portfolio/education', [HomeController::class, 'addEducation'])->name('portfolio.add.education');
     Route::post('/portfolio/activity', [HomeController::class, 'addActivity'])->name('portfolio.add.activity');
+
+    // Update
+    Route::put('/portfolio/work/{id}', [HomeController::class, 'updateWorkExperience'])->name('portfolio.update.work');
+    Route::put('/portfolio/education/{id}', [HomeController::class, 'updateEducation'])->name('portfolio.update.education');
+    Route::put('/portfolio/activity/{id}', [HomeController::class, 'updateActivity'])->name('portfolio.update.activity');
+
+    // Delete
+    Route::delete('/portfolio/work/{id}', [HomeController::class, 'deleteWorkExperience'])->name('portfolio.delete.work');
+    Route::delete('/portfolio/education/{id}', [HomeController::class, 'deleteEducation'])->name('portfolio.delete.education');
+    Route::delete('/portfolio/activity/{id}', [HomeController::class, 'deleteActivity'])->name('portfolio.delete.activity');
+
 });
