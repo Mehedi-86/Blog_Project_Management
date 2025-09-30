@@ -173,3 +173,5 @@ Route::middleware('auth')->group(function () {
     Route::delete('/portfolio/activity/{id}', [HomeController::class, 'deleteActivity'])->name('portfolio.delete.activity');
 
 });
+
+Route::get('/trending', [HomeController::class, 'showTrendingPosts'])->name('posts.trending');

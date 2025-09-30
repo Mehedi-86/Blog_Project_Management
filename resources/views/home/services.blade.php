@@ -95,6 +95,9 @@
         <a href="{{ route('users.show') }}" class="stats-button">
             Show Active and Banned Users
         </a>
+        <a href="{{ route('posts.trending') }}" class="stats-button">
+            🔥 Trending Posts
+        </a>
     </div>
 
     @include('home.footer')

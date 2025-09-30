@@ -605,22 +605,9 @@ public function whomIFollow()
 
 public function postDetails()
 {
-    $posts = DB::select("
-        SELECT 
-            p.id,
-            p.title,
-            c.name AS category_name,
-            COUNT(DISTINCT l.id) AS likes_count,
-            COUNT(DISTINCT cm.id) AS comments_count,
-            COUNT(DISTINCT r.id) AS reports_count
-        FROM posts p
-        LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN likes l ON l.post_id = p.id
-        LEFT JOIN comments cm ON cm.post_id = p.id
-        LEFT JOIN reports r ON r.post_id = p.id
-        GROUP BY p.id, p.title, c.name -- Group all results by post
-        ORDER BY p.created_at DESC
-    ");
+    // The complex query is gone, replaced by a simple select from our new VIEW.
+    // The output to the Blade file is identical.
+    $posts = DB::select("SELECT * FROM post_details_view ORDER BY created_at DESC");
 
     return view('home.post_details_table', compact('posts'));
 }
@@ -870,6 +857,20 @@ public function deleteActivity($id)
 {
     DB::delete("DELETE FROM extra_curricular_activities WHERE id = ? AND user_id = ?", [$id, auth()->id()]);
     return redirect()->route('portfolio.manage')->with('success', 'Activity deleted successfully!');
+}
+
+public function showTrendingPosts()
+{
+    $trendingPosts = DB::select("
+        SELECT p.*, u.name as author_name, c.name as category_name
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.is_trending = 1
+        ORDER BY p.views DESC
+    ");
+
+    return view('home.trending_posts', compact('trendingPosts'));
 }
 
 }
