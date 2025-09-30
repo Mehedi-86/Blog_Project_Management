@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
     @include('home.homecss')
-
     <style>
         .posts-table {
             width: 90%;
-            margin: 40px auto;
+            margin: auto;
             border-collapse: collapse;
             font-family: Arial, sans-serif;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -28,8 +27,10 @@
             background-color: #f3f3f3;
         }
 
+        /* --- New Styles for Clickable Rows --- */
         .posts-table tbody tr:hover {
             background-color: #d1f0ff;
+            cursor: pointer; /* Changes the cursor to a pointer on hover */
             transition: background-color 0.3s;
         }
 
@@ -59,7 +60,8 @@
         </thead>
         <tbody>
             @foreach($posts as $post)
-            <tr>
+            {{-- This onclick event makes the entire row a clickable link --}}
+            <tr onclick="window.location='{{ route('post.interactions', $post->id) }}';">
                 <td>{{ $post->id }}</td>
                 <td>{{ $post->title }}</td>
                 <td>{{ $post->category_name ?? 'N/A' }}</td>

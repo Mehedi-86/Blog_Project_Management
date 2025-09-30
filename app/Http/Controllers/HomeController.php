@@ -873,4 +873,35 @@ public function showTrendingPosts()
     return view('home.trending_posts', compact('trendingPosts'));
 }
 
+public function showPostInteractions($id)
+{
+    // Security Check: Make sure the post exists and belongs to the logged-in user.
+    $post = DB::select("SELECT id, title FROM posts WHERE id = ? AND user_id = ?", [$id, auth()->id()])[0] ?? null;
+
+    // If the post doesn't exist or doesn't belong to the user, show a 403 Forbidden error.
+    if (!$post) {
+        abort(403, 'Unauthorized Action');
+    }
+
+    // Fetch all users who have liked this specific post
+    $likers = DB::select("
+        SELECT u.name 
+        FROM likes l 
+        JOIN users u ON l.user_id = u.id 
+        WHERE l.post_id = ?
+    ", [$id]);
+
+    // Fetch all comments for this post, along with the commenter's name
+    $commenters = DB::select("
+        SELECT u.name, c.content, c.created_at 
+        FROM comments c 
+        JOIN users u ON c.user_id = u.id 
+        WHERE c.post_id = ? 
+        ORDER BY c.created_at DESC
+    ", [$id]);
+
+    // Pass all the data to the new view
+    return view('home.post_interactions', compact('post', 'likers', 'commenters'));
+}
+
 }

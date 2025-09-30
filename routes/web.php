@@ -175,3 +175,5 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/trending', [HomeController::class, 'showTrendingPosts'])->name('posts.trending');
+
+Route::get('/post-interactions/{id}', [HomeController::class, 'showPostInteractions'])->name('post.interactions');
