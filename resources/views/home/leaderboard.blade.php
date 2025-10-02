@@ -89,7 +89,7 @@
         }
         .schema-pdf-container iframe {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1300px;
             height: 800px;
             border: none;
             border-radius: 8px;
