@@ -696,7 +696,7 @@ public function reportsByMe()
 public function showUsers() {
     $activeUsers = DB::table('users')->where('is_banned', 0)->get();
     $bannedUsers = DB::table('users')->where('is_banned', 1)->get();
-    return view('home.showUsers', compact('activeUsers', 'bannedUsers'));
+    return view('home.manage_users', compact('activeUsers', 'bannedUsers'));
 }
 
 public function leaderboard()
@@ -904,4 +904,234 @@ public function showPostInteractions($id)
     return view('home.post_interactions', compact('post', 'likers', 'commenters'));
 }
 
+public function myPostAnalytics()
+{
+    $userId = auth()->id();
+    $sql = "
+        WITH PostStats AS (
+            SELECT 
+                p.id, p.title, p.views, p.status,
+                COUNT(DISTINCT l.id) AS like_count,
+                COUNT(DISTINCT c.id) AS comment_count,
+                COUNT(DISTINCT s.id) AS save_count,
+                (COUNT(DISTINCT l.id) * 1) + (COUNT(DISTINCT c.id) * 2) + (COUNT(DISTINCT s.id) * 3) AS engagement_score
+            FROM posts p
+            LEFT JOIN likes l ON p.id = l.post_id
+            LEFT JOIN comments c ON p.id = c.post_id
+            LEFT JOIN post_user_saves s ON p.id = s.post_id
+            WHERE p.user_id = ?
+            GROUP BY p.id, p.title, p.views, p.status
+        )
+        SELECT 
+            *,
+            RANK() OVER (ORDER BY engagement_score DESC, views DESC) as performance_rank
+        FROM PostStats
+        ORDER BY performance_rank ASC;
+    ";
+
+    $posts = DB::select($sql, [$userId]);
+
+    return view('home.my_post_analytics', compact('posts'));
 }
+
+public function mutualFollows()
+{
+    $userId = auth()->id();
+    $sql = "
+        SELECT u.id, u.name, u.email
+        FROM follows f1
+        JOIN users u ON f1.following_id = u.id
+        WHERE f1.follower_id = ?
+        AND EXISTS (
+            SELECT 1 
+            FROM follows f2 
+            WHERE f2.follower_id = f1.following_id 
+            AND f2.following_id = f1.follower_id
+        );
+    ";
+    $connections = DB::select($sql, [$userId]);
+
+    return view('home.mutual_follows', compact('connections'));
+}
+
+public function userActivityLog()
+{
+    $userId = auth()->id();
+
+    // -------------------------
+    // Step 1: Daily Summary (7 days)
+    // -------------------------
+    $dailySummarySql = "
+        SELECT 
+            DATE(created_at) as activity_date, 
+            COUNT(*) as action_count,
+            MIN(created_at) as first_activity_at,
+            MAX(created_at) as last_activity_at
+        FROM (
+            (SELECT created_at FROM posts WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM likes WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM comments WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM post_user_saves WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM follows WHERE follower_id = ?)
+        ) as daily_actions
+        GROUP BY activity_date
+        ORDER BY activity_date DESC
+        LIMIT 7
+    ";
+    $dailySummary = DB::select($dailySummarySql, [$userId, $userId, $userId, $userId, $userId]);
+
+    // Calculate human-readable session duration
+    foreach ($dailySummary as $day) {
+        if ($day->action_count > 1) {
+            $start = \Carbon\Carbon::parse($day->first_activity_at);
+            $end = \Carbon\Carbon::parse($day->last_activity_at);
+            $day->session_duration = $start->diffForHumans($end, true); // e.g., "2 hours"
+        } else {
+            $day->session_duration = null;
+        }
+    }
+
+    // -------------------------
+    // Step 2: Get list of actions per day
+    // -------------------------
+    $activitiesPerDay = DB::select("
+        SELECT DATE(created_at) as activity_date, 'Created a Post' as type FROM posts WHERE user_id = ?
+        UNION ALL
+        SELECT DATE(created_at) as activity_date, 'Liked a Post' FROM likes WHERE user_id = ?
+        UNION ALL
+        SELECT DATE(created_at) as activity_date, 'Commented on a Post' FROM comments WHERE user_id = ?
+        UNION ALL
+        SELECT DATE(created_at) as activity_date, 'Saved a Post' FROM post_user_saves WHERE user_id = ?
+        UNION ALL
+        SELECT DATE(created_at) as activity_date, 'Followed a User' FROM follows WHERE follower_id = ?
+    ", [$userId, $userId, $userId, $userId, $userId]);
+
+    // Map actions to their respective date
+    $dailySummaryMap = [];
+    foreach ($dailySummary as $day) {
+        $dailySummaryMap[$day->activity_date] = [
+            'activity_date' => $day->activity_date,
+            'action_count' => $day->action_count,
+            'session_duration' => $day->session_duration,
+            'actions' => []
+        ];
+    }
+
+    foreach ($activitiesPerDay as $act) {
+        if (isset($dailySummaryMap[$act->activity_date])) {
+            $dailySummaryMap[$act->activity_date]['actions'][] = $act->type;
+        }
+    }
+
+    // Fill any missing day in last 7 days
+    $dailySummaryFinal = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $date = \Carbon\Carbon::now()->subDays($i)->format('Y-m-d');
+        if (!isset($dailySummaryMap[$date])) {
+            $dailySummaryMap[$date] = [
+                'activity_date' => $date,
+                'action_count' => 0,
+                'session_duration' => null,
+                'actions' => []
+            ];
+        }
+        $dailySummaryFinal[] = $dailySummaryMap[$date];
+    }
+
+    // -------------------------
+    // Step 3: Detailed Timeline
+    // -------------------------
+    $timelineSql = "
+        (SELECT p.id as item_id, 'Created a Post' as activity_type, p.title as details, p.created_at FROM posts p WHERE p.user_id = ?)
+        UNION ALL
+        (SELECT l.post_id as item_id, 'Liked a Post' as activity_type, p.title as details, l.created_at FROM likes l JOIN posts p ON l.post_id = p.id WHERE l.user_id = ?)
+        UNION ALL
+        (SELECT c.post_id as item_id, 'Commented on a Post' as activity_type, c.content as details, c.created_at FROM comments c WHERE c.user_id = ?)
+        UNION ALL
+        (SELECT f.following_id as item_id, 'Followed a User' as activity_type, u.name as details, f.created_at FROM follows f JOIN users u ON f.following_id = u.id WHERE f.follower_id = ?)
+        UNION ALL
+        (SELECT s.post_id as item_id, 'Saved a Post' as activity_type, p.title as details, s.created_at FROM post_user_saves s JOIN posts p ON s.post_id = p.id WHERE s.user_id = ?)
+        UNION ALL
+        (SELECT r.post_id as item_id, 'Reported a Post' as activity_type, p.title as details, r.created_at FROM reports r JOIN posts p ON r.post_id = p.id WHERE r.reported_by = ?)
+        UNION ALL
+        (SELECT w.id as item_id, 'Updated Portfolio' as activity_type, CONCAT('Added Work: ', w.designation, ' at ', w.workplace_name) as details, w.created_at FROM work_experiences w WHERE w.user_id = ?)
+        ORDER BY created_at DESC
+        LIMIT 50
+    ";
+    $activities = DB::select($timelineSql, [$userId, $userId, $userId, $userId, $userId, $userId, $userId]);
+
+    return view('home.user_activity_log', [
+        'dailySummary' => $dailySummaryFinal,
+        'activities' => $activities
+    ]);
+}
+
+public function userActivityAnalysis()
+{
+    $userId = auth()->id();
+
+    // Step 1: get all existing activity days
+    $dailySummarySql = "
+        SELECT 
+            DATE(created_at) as activity_date, 
+            COUNT(*) as action_count,
+            MIN(created_at) as first_activity_at,
+            MAX(created_at) as last_activity_at
+        FROM (
+            (SELECT created_at FROM posts WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM likes WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM comments WHERE user_id = ?)
+            UNION ALL
+            (SELECT created_at FROM post_user_saves WHERE user_id = ?)
+        ) as daily_actions
+        GROUP BY activity_date
+        ORDER BY activity_date ASC
+    ";
+    $results = DB::select($dailySummarySql, [$userId, $userId, $userId, $userId]);
+
+    // Step 2: create 14-day range
+    $chartLabels = [];
+    $chartActionData = [];
+    $chartDurationData = [];
+
+    $startDate = \Carbon\Carbon::now()->subDays(13)->startOfDay();
+    $endDate = \Carbon\Carbon::now()->endOfDay();
+
+    // Convert DB results to array for quick lookup
+    $activityMap = collect($results)->keyBy(fn($d) => \Carbon\Carbon::parse($d->activity_date)->toDateString());
+
+    // Step 3: fill every date in range (even if no activity)
+    $period = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate);
+    foreach ($period as $date) {
+        $key = $date->format('Y-m-d'); // <-- works with DateTime
+        $chartLabels[] = $date->format('M d');
+    
+        if (isset($activityMap[$key])) {
+            $day = $activityMap[$key];
+            $chartActionData[] = $day->action_count;
+    
+            if ($day->action_count > 1) {
+                $start = \Carbon\Carbon::parse($day->first_activity_at);
+                $end = \Carbon\Carbon::parse($day->last_activity_at);
+                $chartDurationData[] = $start->diffInMinutes($end);
+            } else {
+                $chartDurationData[] = 0;
+            }
+        } else {
+            $chartActionData[] = 0;
+            $chartDurationData[] = 0;
+        }
+    }
+    
+
+    return view('home.user_activity_analysis', compact('chartLabels', 'chartActionData', 'chartDurationData'));
+}
+
+}
+

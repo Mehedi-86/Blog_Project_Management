@@ -177,3 +177,11 @@ Route::middleware('auth')->group(function () {
 Route::get('/trending', [HomeController::class, 'showTrendingPosts'])->name('posts.trending');
 
 Route::get('/post-interactions/{id}', [HomeController::class, 'showPostInteractions'])->name('post.interactions');
+
+Route::get('/my-post-analytics', [HomeController::class, 'myPostAnalytics'])->name('posts.analytics');
+
+Route::get('/mutual-follows', [HomeController::class, 'mutualFollows'])->name('followers.mutual');
+
+Route::get('/activity-log', [HomeController::class, 'userActivityLog'])->name('activity.log'); // Make sure the old one has a route too!
+
+Route::get('/activity-analysis', [HomeController::class, 'userActivityAnalysis'])->name('activity.analysis');

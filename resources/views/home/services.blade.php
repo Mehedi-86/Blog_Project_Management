@@ -98,6 +98,18 @@
         <a href="{{ route('posts.trending') }}" class="stats-button">
             🔥 Trending Posts
         </a>
+        <a href="{{ route('posts.analytics') }}" class="stats-button">
+            My Post Analytics
+        </a>
+        <a href="{{ route('followers.mutual') }}" class="stats-button">
+            My Connections (Mutuals)
+        </a>
+        <a href="{{ route('activity.log') }}" class="stats-button">
+            My Activity Log
+        </a>
+        <a href="{{ route('activity.analysis') }}" class="stats-button">
+            📊 My Activity Analysis
+        </a>
     </div>
 
     @include('home.footer')

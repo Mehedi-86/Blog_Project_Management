@@ -37,8 +37,7 @@
             text-align: center;
             font-size: 28px;
             font-weight: 700;
-            color: #333;
-            margin-top: 40px;
+            color: #333;          
         }
     </style>
 </head>
