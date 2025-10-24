@@ -1200,6 +1200,67 @@ public function showPost($id)
     return view('home.post_details', compact('post'));
 }
 
+// ==========================================================
+    // == NEW AI SEARCH METHODS START HERE
+    // ==========================================================
+
+    /**
+     * Method 1: Show the AI Search Page
+     * This method fetches all available category names and passes them
+     * to the view, so our JavaScript knows what categories exist.
+     */
+    public function showAiSearchPage()
+    {
+        // Fetch all unique category names from your database
+        $categories = DB::select("SELECT DISTINCT name FROM categories");
+        
+        // Convert the array of objects (e.g., [{'name': 'Travel'}])
+        // into a simple array (e.g., ['Travel'])
+        $categoryNames = array_column($categories, 'name');
+
+        // Pass this array to the new view
+        return view('home.ai_search', compact('categoryNames'));
+    }
+
+    /**
+     * Method 2: Handle the AI Search API Request
+     * This method is called by our JavaScript. It receives a list of
+     * relevant category names (from the AI) and queries the database.
+     */
+    public function handleAiSearch(Request $request)
+    {
+        // Get the array of category names sent from the JavaScript
+        $categories = $request->input('categories');
+
+        // If the array is empty or invalid, return no posts
+        if (empty($categories) || !is_array($categories)) {
+            return response()->json([]);
+        }
+
+        // Create the '?' placeholders for our secure "WHERE IN" query
+        // E.g., if $categories = ['Travel', 'Tech'], this creates "?,?"
+        $placeholders = implode(',', array_fill(0, count($categories), '?'));
+
+        // Build the secure SQL query
+        // This query finds all active posts where the category name
+        // is IN the list of names the AI provided.
+        $sql = "
+            SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE c.name IN ($placeholders)
+            AND p.status = 'active'
+            ORDER BY p.created_at DESC
+            LIMIT 20
+        ";
+
+        // Execute the query, safely passing the $categories array as bindings
+        $posts = DB::select($sql, $categories);
+
+        // Return the found posts as a JSON response
+        return response()->json($posts);
+    }
 
 }
 

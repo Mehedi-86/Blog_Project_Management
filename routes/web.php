@@ -172,6 +172,15 @@ Route::middleware('auth')->group(function () {
     Route::delete('/portfolio/education/{id}', [HomeController::class, 'deleteEducation'])->name('portfolio.delete.education');
     Route::delete('/portfolio/activity/{id}', [HomeController::class, 'deleteActivity'])->name('portfolio.delete.activity');
 
+    // --- NEW AI SEARCH ROUTES START HERE ---
+    // This route displays the search page to the user
+    Route::get('/ai-search', [HomeController::class, 'showAiSearchPage'])->name('ai.search.page');
+
+    // This route is the API endpoint that our JavaScript will call
+    Route::post('/ai-search-handler', [HomeController::class, 'handleAiSearch'])->name('ai.search.handler');
+    // --- NEW AI SEARCH ROUTES END HERE ---
+
+
 });
 
 Route::get('/trending', [HomeController::class, 'showTrendingPosts'])->name('posts.trending');

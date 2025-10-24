@@ -113,6 +113,7 @@
         <a href="{{ route('personalized.feed') }}" class="stats-button">
             For You Feed
         </a>
+        <a href="{{ route('ai.search.page') }}" class="stats-button">AI Search</a>
     </div>
 
     @include('home.footer')
