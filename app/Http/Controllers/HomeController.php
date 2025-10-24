@@ -1200,14 +1200,15 @@ public function showPost($id)
     return view('home.post_details', compact('post'));
 }
 
-// ==========================================================
+ // --- Other methods (index, home, etc.) ---
+
+    // ==========================================================
     // == NEW AI SEARCH METHODS START HERE
     // ==========================================================
 
     /**
      * Method 1: Show the AI Search Page
-     * This method fetches all available category names and passes them
-     * to the view, so our JavaScript knows what categories exist.
+     * We pass categories here for the header AND for the AI's context.
      */
     public function showAiSearchPage()
     {
@@ -1218,47 +1219,72 @@ public function showPost($id)
         // into a simple array (e.g., ['Travel'])
         $categoryNames = array_column($categories, 'name');
 
-        // Pass this array to the new view
+        // Pass this array to the new view (for the header and AI)
         return view('home.ai_search', compact('categoryNames'));
     }
 
     /**
-     * Method 2: Handle the AI Search API Request
-     * This method is called by our JavaScript. It receives a list of
-     * relevant category names (from the AI) and queries the database.
+     * Method 2: Handle the AI Search API Request (Updated for Fallback Logic)
+     * This method receives both keywords and categories.
+     * It tries keywords first, and if no results, falls back to categories.
      */
     public function handleAiSearch(Request $request)
     {
-        // Get the array of category names sent from the JavaScript
+        $keywords = $request->input('keywords');
         $categories = $request->input('categories');
+        $posts = [];
 
-        // If the array is empty or invalid, return no posts
-        if (empty($categories) || !is_array($categories)) {
-            return response()->json([]);
+        // --- LAYER 1: Try to find posts by KEYWORDS first ---
+        if (!empty($keywords) && is_array($keywords)) {
+            $bindings = [];
+            $keywordClauses = [];
+
+            // Loop through each keyword and add a clause for it
+            foreach ($keywords as $keyword) {
+                $keywordClauses[] = "(p.title LIKE ? OR p.content LIKE ?)";
+                $bindings[] = '%' . $keyword . '%';
+                $bindings[] = '%' . $keyword . '%';
+            }
+
+            // Build the keyword-based query
+            $sql = "
+                SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
+                FROM posts p
+                JOIN users u ON p.user_id = u.id
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE p.status = 'active'
+                AND (" . implode(' AND ', $keywordClauses) . ")
+                ORDER BY p.created_at DESC
+                LIMIT 20
+            ";
+            
+            $posts = DB::select($sql, $bindings);
         }
 
-        // Create the '?' placeholders for our secure "WHERE IN" query
-        // E.g., if $categories = ['Travel', 'Tech'], this creates "?,?"
-        $placeholders = implode(',', array_fill(0, count($categories), '?'));
+        // --- LAYER 2: FALLBACK to CATEGORIES if no posts were found ---
+        // We only run this if the keyword search gave 0 results AND we have categories to search for.
+        if (empty($posts) && !empty($categories) && is_array($categories)) {
+            
+            // Create the '?' placeholders for our secure "WHERE IN" query
+            $placeholders = implode(',', array_fill(0, count($categories), '?'));
 
-        // Build the secure SQL query
-        // This query finds all active posts where the category name
-        // is IN the list of names the AI provided.
-        $sql = "
-            SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
-            FROM posts p
-            JOIN users u ON p.user_id = u.id
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE c.name IN ($placeholders)
-            AND p.status = 'active'
-            ORDER BY p.created_at DESC
-            LIMIT 20
-        ";
+            // Build the category-based query
+            $sql = "
+                SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
+                FROM posts p
+                JOIN users u ON p.user_id = u.id
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE c.name IN ($placeholders)
+                AND p.status = 'active'
+                ORDER BY p.created_at DESC
+                LIMIT 20
+            ";
 
-        // Execute the query, safely passing the $categories array as bindings
-        $posts = DB::select($sql, $categories);
+            // Execute the category query, passing the $categories array as bindings
+            $posts = DB::select($sql, $categories);
+        }
 
-        // Return the found posts as a JSON response
+        // Return the result (either from keywords, categories, or an empty array)
         return response()->json($posts);
     }
 

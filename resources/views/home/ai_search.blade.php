@@ -3,12 +3,12 @@
 <head>
     @include('home.homecss')
     
-    {{-- Using a modern, readable font --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* --- STYLES ARE UNCHANGED --- */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f8f9fa;
@@ -84,7 +84,7 @@
             color: #555;
         }
         
-        /* Post card styling (re-using from previous example) */
+        /* Post card styling */
         .post-card-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -121,11 +121,10 @@
             font-weight: 600;
             color: #1a202c;
             margin-bottom: 10px;
-            /* Added to prevent long titles from breaking layout */
             overflow: hidden;
             text-overflow: ellipsis;
             display: -webkit-box;
-            -webkit-line-clamp: 2; /* Limit to 2 lines */
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
         .post-card-meta {
@@ -149,6 +148,12 @@
         }
 
     </style>
+
+    {{-- Safely encode PHP variable for the header AND for the AI --}}
+    @php
+        $categoryNamesJson = json_encode($categoryNames ?? []);
+    @endphp
+
 </head>
 <body>
     <!-- Header -->
@@ -164,12 +169,12 @@
         </div>
 
         <div class="search-bar-wrapper">
-            <input type="text" id="ai-search-input" placeholder="e.g., 'a post about traveling' or 'what's new in tech?'">
+            <input type="text" id="ai-search-input" placeholder="e.g., 'a post about a hidden journey'">
             <button id="ai-search-button">Search</button>
         </div>
 
         <div class="loader" id="loader">
-            <p>Asking AI for relevant categories...</p>
+            <p>Asking AI to analyze query...</p>
         </div>
 
         <div class="post-card-grid" id="results-container">
@@ -181,9 +186,8 @@
     @include('home.footer')
 
     <script>
-        // --- This is how we pass data from PHP (controller) to JavaScript ---
-        // $categoryNames is passed from showAiSearchPage() in HomeController
-        const ALL_CATEGORIES = @json($categoryNames);
+        // --- This variable is now used by the AI prompt ---
+        const ALL_CATEGORIES_JSON = {!! $categoryNamesJson !!};
 
         // --- Element References ---
         const searchInput = document.getElementById('ai-search-input');
@@ -192,12 +196,12 @@
         const resultsContainer = document.getElementById('results-container');
 
         // --- Gemini API Configuration ---
-        const apiKey = "AIzaSyD1jyfkkpuF1UIOSxt3VyY8zZnaKXuXxs0"; // Leave as-is, Canvas will provide it
+        const apiKey = "AIzaSyD1jyfkkpuF1UIOSxt3VyY8zZnaKXuXxs0"; 
         const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         // --- Backend URL ---
-        // We use the route() helper to get the correct URL
         const backendSearchUrl = '{{ route('ai.search.handler') }}';
+        const postDetailBaseUrl = '{{ url('/post') }}'; // Correct base URL for posts
 
         // --- Event Listener ---
         searchButton.addEventListener('click', handleSearch);
@@ -209,123 +213,136 @@
 
         async function handleSearch() {
             const query = searchInput.value.trim();
-            if (!query) return; // Do nothing if input is empty
+            if (!query) return; 
 
-            // 1. Set UI to loading state
-            setLoading(true, "Asking AI for relevant categories...");
-            resultsContainer.innerHTML = ''; // Clear old results
+            setLoading(true, "Asking AI to analyze your query...");
+            resultsContainer.innerHTML = ''; 
 
             try {
-                // 2. Step 1: Call Gemini AI to get relevant categories
-                const categories = await getCategoriesFromAI(query);
+                // 2. Step 1: Call Gemini AI to get both keywords AND categories
+                const analysis = await getAiAnalysis(query);
 
-                if (!categories || categories.length === 0) {
-                    showNoResults("AI couldn't find any matching categories for that query.");
-                    setLoading(false, ""); // Stop loading
+                if (!analysis || (analysis.keywords.length === 0 && analysis.categories.length === 0)) {
+                    showNoResults("AI couldn't find any specific keywords or categories in that query.");
+                    setLoading(false, "");
                     return;
                 }
                 
-                // Update loader text
-                setLoading(true, `Found categories: ${categories.join(', ')}. Fetching posts...`);
+                let loaderMsg = `Searching by keywords, then falling back to categories...`;
+                setLoading(true, loaderMsg);
 
-                // 3. Step 2: Call our own backend to get posts from those categories
-                const posts = await getPostsFromBackend(categories);
+                // 3. Step 2: Call our own backend with BOTH lists
+                const posts = await getPostsFromBackend(analysis.keywords, analysis.categories);
 
                 if (!posts || posts.length === 0) {
-                    showNoResults("Found matching categories, but no posts in them yet.");
-                    setLoading(false, ""); // Stop loading
+                    showNoResults("AI analyzed your query, but no posts matched.");
+                    setLoading(false, "");
                     return;
                 }
 
-                // 4. Step 3: Render the posts on the page
+                // 4. Step 3: Render the posts
                 renderPosts(posts);
 
             } catch (error) {
-                // --- THIS IS THE IMPORTANT CHANGE ---
-                // We now show the *specific* error message.
                 console.error('Search failed:', error);
                 showNoResults(`An error occurred: ${error.message}. Check the console (F12) for more details.`);
-                // --- END OF CHANGE ---
-
             } finally {
-                // 5. Unset loading state
                 setLoading(false, "");
             }
         }
 
         /**
-         * Step 1: Calls the Gemini API to get a list of category names.
+         * Step 1: Calls the Gemini API to get both keywords and categories.
          */
-        async function getCategoriesFromAI(query) {
-            // This prompt is critical. It forces the AI to only respond with
-            // category names that actually exist in our database.
-            const systemPrompt = `You are a search assistant for a blog. The available post categories are: ${JSON.stringify(ALL_CATEGORIES)}.
-Analyze the user's query: "${query}".
-Respond ONLY with a JSON array of the exact category names from the list that are relevant to the query.
-If no categories seem to match, return an empty array. Do not add any other text or explanations.`;
+        async function getAiAnalysis(query) {
             
+            // --- This prompt asks for BOTH keywords and categories ---
+            const systemPrompt = `You are a search assistant for a blog.
+The user's query is: "${query}".
+The available post categories are: ${JSON.stringify(ALL_CATEGORIES_JSON)}.
+
+Your job is two-fold:
+1.  **Keywords**: Understand the user's *intent* and provide specific, meaningful keywords (nouns, proper nouns, or thematic adjectives) that describe the *main topic*.
+    -   If the user searches for "journey", they almost always mean "travel". Return "travel" instead of "journey".
+    -   IGNORE common filler words like "post", "article", "related", "find", "me", "a", "about".
+2.  **Categories**: Identify any categories from the *exact* list above that are relevant to the query.
+
+Respond ONLY with a JSON object in this exact format:
+{
+  "keywords": ["list of main topic keywords"],
+  "categories": ["list of matching category names"]
+}
+
+EXAMPLE QUERIES:
+- "journey related post": { "keywords": ["travel"], "categories": ["Lifestyle"] }
+- "posts about a journey": { "keywords": ["travel"], "categories": ["Lifestyle"] }
+- "traveling posts": { "keywords": ["traveling", "travel"], "categories": ["Lifestyle"] }
+- "posts by sohag about tech": { "keywords": ["sohag", "tech"], "categories": ["Tech"] }
+- "Wanderlust Chronicles": { "keywords": ["Wanderlust Chronicles", "travel"], "categories": ["Lifestyle"] }
+- "a post about learning": { "keywords": ["learning", "education"], "categories": ["Education"] }
+
+If no keywords or categories match, return empty arrays:
+{ "keywords": [], "categories": [] }
+Do not add any other text or explanations.`;
+            // --- END OF PROMPT ---
+
             const payload = {
                 contents: [{ parts: [{ text: query }] }],
                 systemInstruction: {
                     parts: [{ text: systemPrompt }]
                 },
-                // We force the AI to respond in the exact JSON format we want
                 generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: { "type": "STRING" }
-                    }
+                    responseMimeType: "application/json"
                 }
             };
 
-            // This function will handle the fetch and retries
             const data = await fetchWithBackoff(geminiApiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            // The AI returns the JSON as text, so we parse it
             const jsonText = data.candidates[0].content.parts[0].text;
-            return JSON.parse(jsonText);
+            try {
+                return JSON.parse(jsonText); 
+            } catch (parseError) {
+                console.error("Failed to parse AI response:", jsonText);
+                throw new Error("AI returned invalid JSON. Check the console.");
+            }
         }
 
         /**
-         * Step 2: Calls our Laravel backend to get posts.
+         * Step 2: Calls our Laravel backend with both lists
          */
-        async function getPostsFromBackend(categories) {
+        async function getPostsFromBackend(keywords, categories) {
             const response = await fetch(backendSearchUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // Important for Laravel security
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ categories: categories })
+                body: JSON.stringify({ 
+                    keywords: keywords,
+                    categories: categories
+                })
             });
             if (!response.ok) {
-                // This will now throw a specific error message
                 throw new Error(`Backend request failed with status ${response.status} (${response.statusText})`);
             }
             return await response.json();
         }
 
         /**
-         * Step 3: Renders the post cards to the DOM.
+         * Step 3: Renders the post cards (unchanged)
          */
         function renderPosts(posts) {
             let html = '';
             posts.forEach(post => {
-                // Format the date nicely
                 const postDate = new Date(post.created_at).toLocaleDateString('en-US', {
                     year: 'numeric', month: 'short', day: 'numeric'
                 });
                 
-                // --- THIS IS THE SECOND CHANGE ---
-                // Fixed the URL to use your 'posts.details' route.
-                // This route doesn't take an ID, so all links will go to the main post details table.
-                // This is a limitation of your current routes, but it fixes the broken link.
-                const postUrl = `{{ route('posts.details') }}`; 
+                const postUrl = `${postDetailBaseUrl}/${post.id}`;
 
                 html += `
                     <div class="post-card">
@@ -344,7 +361,7 @@ If no categories seem to match, return an empty array. Do not add any other text
             resultsContainer.innerHTML = html;
         }
 
-        // --- Helper Functions ---
+        // --- Helper Functions (UNCHANGED) ---
 
         function setLoading(isLoading, message) {
             if (isLoading) {
@@ -363,28 +380,24 @@ If no categories seem to match, return an empty array. Do not add any other text
             resultsContainer.innerHTML = `<p style="text-align: center; color: #666; padding: 20px;">${message}</p>`;
         }
 
-        // Utility function for retrying fetch calls
         async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
             try {
                 const response = await fetch(url, options);
                 if (!response.ok) {
-                    // 429 = Too Many Requests (rate limiting)
                     if (response.status === 429 && retries > 0) {
-                        // Don't log to console, just wait and retry
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        return fetchWithBackoff(url, options, retries - 1, delay * 2); // Exponential backoff
+                        return fetchWithBackoff(url, options, retries - 1, delay * 2); 
                     }
-                    // For other errors, throw immediately to be caught by handleSearch
-                    throw new Error(`Gemini API request failed with status ${response.status}`);
+                    const errorText = await response.text();
+                    console.error("API Error Response:", errorText);
+                    throw new Error(`Gemini API request failed with status ${response.status}. See console for response.`);
                 }
                 return await response.json();
             } catch (error) {
                 if (retries > 0) {
-                    // Retry on network errors
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return fetchWithBackoff(url, options, retries - 1, delay * 2);
                 }
-                // After all retries fail, throw the error
                 console.error("Failed to fetch after multiple retries:", error);
                 throw error;
             }
