@@ -1133,5 +1133,72 @@ public function userActivityAnalysis()
     return view('home.user_activity_analysis', compact('chartLabels', 'chartActionData', 'chartDurationData'));
 }
 
+public function personalizedFeed()
+{
+    $userId = auth()->id();
+
+    $sql = "
+        WITH Following AS (
+            SELECT following_id FROM follows WHERE follower_id = ?
+        ),
+        FavoriteCategories AS (
+            SELECT p.category_id
+            FROM likes l
+            JOIN posts p ON l.post_id = p.id
+            WHERE l.user_id = ?
+            GROUP BY p.category_id
+            ORDER BY COUNT(l.id) DESC
+            LIMIT 3
+        )
+        SELECT 
+            p.*, 
+            u.name AS author_name,
+            c.name AS category_name,
+            CASE
+                WHEN p.user_id IN (SELECT following_id FROM Following) THEN 100
+                WHEN p.is_trending = 1 THEN 90
+                WHEN p.category_id IN (SELECT category_id FROM FavoriteCategories) THEN 80
+                ELSE 50
+            END AS relevance_score
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE 
+            p.status = 'active' AND
+            p.user_id != ?
+        ORDER BY 
+            relevance_score DESC,
+            p.created_at DESC
+        LIMIT 50;
+    ";
+
+    $posts = DB::select($sql, [$userId, $userId, $userId]);
+
+    return view('home.personalized_feed', compact('posts'));
+}
+
+public function showPost($id)
+{
+    $sql = "
+        SELECT 
+            p.*, 
+            u.name AS author_name, 
+            c.name AS category_name
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.id = ?
+        LIMIT 1;
+    ";
+
+    $post = DB::selectOne($sql, [$id]);
+
+    if (!$post) {
+        abort(404, 'Post not found');
+    }
+
+    return view('home.post_details', compact('post'));
+}
+
 }
 

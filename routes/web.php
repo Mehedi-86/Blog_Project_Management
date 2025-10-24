@@ -185,3 +185,7 @@ Route::get('/mutual-follows', [HomeController::class, 'mutualFollows'])->name('f
 Route::get('/activity-log', [HomeController::class, 'userActivityLog'])->name('activity.log'); // Make sure the old one has a route too!
 
 Route::get('/activity-analysis', [HomeController::class, 'userActivityAnalysis'])->name('activity.analysis');
+
+Route::get('/personalized-feed', [HomeController::class, 'personalizedFeed'])->name('personalized.feed');
+
+Route::get('/post/{id}', [HomeController::class, 'showPost'])->name('post.details');

@@ -110,6 +110,9 @@
         <a href="{{ route('activity.analysis') }}" class="stats-button">
             📊 My Activity Analysis
         </a>
+        <a href="{{ route('personalized.feed') }}" class="stats-button">
+            For You Feed
+        </a>
     </div>
 
     @include('home.footer')
