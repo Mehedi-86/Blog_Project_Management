@@ -29,10 +29,13 @@ class AdminController extends Controller
     // Show manage posts page
     public function managePosts()
     {
-        $posts = DB::table('posts')
-                    ->join('users', 'posts.user_id', '=', 'users.id')
-                    ->select('posts.*', 'users.name', 'users.usertype')
-                    ->get();
+        // CONVERTED: Was DB::table('posts')->join(...)
+        $sql = "
+            SELECT p.*, u.name, u.usertype 
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+        ";
+        $posts = DB::select($sql);
 
         return view('admin.managePost', compact('posts'));
     }
@@ -40,9 +43,8 @@ class AdminController extends Controller
     // Accept post
     public function acceptPost($id)
     {
-        DB::table('posts')
-            ->where('id', $id)
-            ->update(['status' => 'active']);
+        // CONVERTED: Was DB::table('posts')->where(...)->update(...)
+        DB::update("UPDATE posts SET status = ? WHERE id = ?", ['active', $id]);
 
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post accepted successfully!',
@@ -53,9 +55,8 @@ class AdminController extends Controller
     // Reject post
     public function rejectPost($id)
     {
-        DB::table('posts')
-            ->where('id', $id)
-            ->update(['status' => 'rejected']);
+        // CONVERTED: Was DB::table('posts')->where(...)->update(...)
+        DB::update("UPDATE posts SET status = ? WHERE id = ?", ['rejected', $id]);
 
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post rejected successfully!',
@@ -66,9 +67,8 @@ class AdminController extends Controller
     // Delete post
     public function deletePost($id)
     {
-        DB::table('posts')
-            ->where('id', $id)
-            ->delete();
+        // CONVERTED: Was DB::table('posts')->where(...)->delete()
+        DB::delete("DELETE FROM posts WHERE id = ?", [$id]);
 
         return redirect()->route('admin.manage.posts')->with([
             'message' => 'Post deleted successfully!',
@@ -79,9 +79,8 @@ class AdminController extends Controller
     // Show manage users page (exclude admins)
     public function manageUsers()
     {
-        $users = DB::table('users')
-                    ->where('usertype', '!=', 'admin')
-                    ->get();
+        // CONVERTED: Was DB::table('users')->where(...)
+        $users = DB::select("SELECT * FROM users WHERE usertype != ?", ['admin']);
 
         return view('admin.manageUsers', compact('users'));
     }
@@ -89,9 +88,8 @@ class AdminController extends Controller
     // Ban user
     public function banUser($id)
     {
-        DB::table('users')
-            ->where('id', $id)
-            ->update(['is_banned' => 1]);
+        // CONVERTED: Was DB::table('users')->where(...)->update(...)
+        DB::update("UPDATE users SET is_banned = ? WHERE id = ?", [1, $id]);
 
         return redirect()->back()->with([
             'message' => 'User banned successfully!',
@@ -102,9 +100,8 @@ class AdminController extends Controller
     // Unban user
     public function unbanUser($id)
     {
-        DB::table('users')
-            ->where('id', $id)
-            ->update(['is_banned' => 0]);
+        // CONVERTED: Was DB::table('users')->where(...)->update(...)
+        DB::update("UPDATE users SET is_banned = ? WHERE id = ?", [0, $id]);
 
         return redirect()->back()->with([
             'message' => 'User unbanned successfully!',
@@ -115,9 +112,8 @@ class AdminController extends Controller
     // Delete user
     public function deleteUser($id)
     {
-        DB::table('users')
-            ->where('id', $id)
-            ->delete();
+        // CONVERTED: Was DB::table('users')->where(...)->delete()
+        DB::delete("DELETE FROM users WHERE id = ?", [$id]);
 
         return redirect()->back()->with([
             'message' => 'User deleted successfully!',

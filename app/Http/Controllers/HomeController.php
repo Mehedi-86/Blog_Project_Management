@@ -480,20 +480,28 @@ public function listPosts(Request $request)
 {
     $categoryId = $request->query('category_id'); // get selected category
 
-    // Fetch categories for dropdown
-    $categories = DB::table('categories')->get();
+    // CONVERTED: Fetch categories for dropdown
+    $categories = DB::select("SELECT * FROM categories");
 
-    // Fetch posts with optional category filter
-    $postsQuery = DB::table('posts')
-        ->join('users', 'posts.user_id', '=', 'users.id')
-        ->leftJoin('categories', 'posts.category_id', '=', 'categories.id')
-        ->select('posts.*', 'users.name', 'categories.name as category_name');
+    // CONVERTED: Base query
+    $sql = "
+        SELECT p.*, u.name, c.name as category_name
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN categories c ON p.category_id = c.id
+    ";
+    
+    $bindings = [];
 
+    // Dynamically add WHERE clause if a category is selected
     if ($categoryId) {
-        $postsQuery->where('posts.category_id', $categoryId);
+        $sql .= " WHERE p.category_id = ?";
+        $bindings[] = $categoryId;
     }
 
-    $posts = $postsQuery->orderBy('posts.created_at', 'desc')->get();
+    $sql .= " ORDER BY p.created_at DESC";
+
+    $posts = DB::select($sql, $bindings);
 
     return view('home.posts_list', compact('posts', 'categories', 'categoryId'));
 }
@@ -636,13 +644,16 @@ public function activePosts()
 
 public function rejectedPosts()
 {
-    $posts = \DB::table('posts')
-        ->join('categories', 'posts.category_id', '=', 'categories.id')
-        ->join('users', 'posts.user_id', '=', 'users.id')
-        ->select('posts.*', 'categories.name as category_name', 'users.name as author_name')
-        ->where('posts.status', 'rejected')
-        ->orderBy('posts.created_at', 'desc')
-        ->get();
+    // CONVERTED: Was DB::table('posts')->...
+    $sql = "
+        SELECT p.*, c.name as category_name, u.name as author_name
+        FROM posts p
+        JOIN categories c ON p.category_id = c.id
+        JOIN users u ON p.user_id = u.id
+        WHERE p.status = ?
+        ORDER BY p.created_at DESC
+    ";
+    $posts = DB::select($sql, ['rejected']);
 
     return view('home.rejected_posts', compact('posts'));
 }
@@ -651,21 +662,23 @@ public function reportsOnMyPosts()
 {
     $userId = auth()->id(); // logged-in user (the post owner)
 
-    $reports = DB::table('reports')
-        ->join('posts', 'reports.post_id', '=', 'posts.id')
-        ->join('users', 'reports.reported_by', '=', 'users.id')
-        ->where('posts.user_id', $userId) // only reports on my posts
-        ->select(
-            'reports.id as report_id',
-            'users.name as reporter_name',
-            'users.email as reporter_email',
-            'posts.id as post_id',
-            'posts.title as post_title',
-            'reports.reason',
-            'reports.created_at as reported_at'
-        )
-        ->orderBy('reports.created_at', 'desc')
-        ->get();
+    // CONVERTED: Was DB::table('reports')->...
+    $sql = "
+        SELECT
+            r.id as report_id,
+            u.name as reporter_name,
+            u.email as reporter_email,
+            p.id as post_id,
+            p.title as post_title,
+            r.reason,
+            r.created_at as reported_at
+        FROM reports r
+        JOIN posts p ON r.post_id = p.id
+        JOIN users u ON r.reported_by = u.id
+        WHERE p.user_id = ?
+        ORDER BY r.created_at DESC
+    ";
+    $reports = DB::select($sql, [$userId]);
 
     return view('home.reports_on_my_posts', compact('reports'));
 }
@@ -674,28 +687,31 @@ public function reportsByMe()
 {
     $userId = auth()->id();
 
-    $reports = \DB::table('reports')
-        ->join('posts', 'reports.post_id', '=', 'posts.id')
-        ->join('users as post_owner', 'posts.user_id', '=', 'post_owner.id')
-        ->select(
-            'reports.id as report_id',
-            'post_owner.name as post_owner_name',
-            'post_owner.email as post_owner_email',
-            'posts.id as post_id',
-            'posts.title as post_title',
-            'reports.reason',
-            'reports.created_at as reported_at'
-        )
-        ->where('reports.reported_by', $userId)
-        ->orderBy('reports.created_at', 'desc')
-        ->get();
+    // CONVERTED: Was \DB::table('reports')->...
+    $sql = "
+        SELECT
+            r.id as report_id,
+            post_owner.name as post_owner_name,
+            post_owner.email as post_owner_email,
+            p.id as post_id,
+            p.title as post_title,
+            r.reason,
+            r.created_at as reported_at
+        FROM reports r
+        JOIN posts p ON r.post_id = p.id
+        JOIN users as post_owner ON p.user_id = post_owner.id
+        WHERE r.reported_by = ?
+        ORDER BY r.created_at DESC
+    ";
+    $reports = DB::select($sql, [$userId]);
 
     return view('home.reports_by_me', compact('reports'));
 }
 
 public function showUsers() {
-    $activeUsers = DB::table('users')->where('is_banned', 0)->get();
-    $bannedUsers = DB::table('users')->where('is_banned', 1)->get();
+    // CONVERTED: Was DB::table('users')->...
+    $activeUsers = DB::select("SELECT * FROM users WHERE is_banned = ?", [0]);
+    $bannedUsers = DB::select("SELECT * FROM users WHERE is_banned = ?", [1]);
     return view('home.manage_users', compact('activeUsers', 'bannedUsers'));
 }
 
@@ -1289,4 +1305,3 @@ public function showPost($id)
     }
 
 }
-
