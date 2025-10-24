@@ -176,6 +176,7 @@ class HomeController extends Controller
         
         if (empty($existsResult)) {
             // CONVERTED: Insert like.
+            // THIS IS THE ONLY QUERY YOU NEED. THE TRIGGER WILL DO THE REST.
             DB::insert('INSERT INTO likes (post_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?)', [
                 $id,
                 $user_id,
@@ -183,21 +184,13 @@ class HomeController extends Controller
                 $now,
             ]);
 
-            // --- New: Insert notification if post belongs to another user ---
-            // CONVERTED: Get post owner ID.
-            $postOwnerResult = DB::select('SELECT user_id FROM posts WHERE id = ? LIMIT 1', [$id]);
-            $postOwnerId = $postOwnerResult[0]->user_id ?? null;
-
-            if ($postOwnerId && $postOwnerId != $user_id) {
-                // CONVERTED: Insert notification.
-                DB::insert('INSERT INTO notifications (user_id, type, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
-                    $postOwnerId,
-                    'like',
-                    json_encode(['liked_by' => $user_id, 'post_id' => $id]),
-                    $now,
-                    $now,
-                ]);
-            }
+            // --- ALL THE DELETED CODE THAT WAS HERE ---
+            // $postOwnerResult = DB::select(...);
+            // $postOwnerId = ...;
+            // if ($postOwnerId && $postOwnerId != $user_id) {
+            //     DB::insert('INSERT INTO notifications ...');
+            // }
+            // --- END OF DELETED CODE ---
         }
 
         return redirect()->back()->with('success', 'Post liked!');
