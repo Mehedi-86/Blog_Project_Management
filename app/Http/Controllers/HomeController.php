@@ -1200,5 +1200,6 @@ public function showPost($id)
     return view('home.post_details', compact('post'));
 }
 
+
 }
 

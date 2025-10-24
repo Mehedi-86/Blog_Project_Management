@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- basic CSS -->
     @include('home.homecss')
 
     <style>
@@ -33,6 +32,7 @@
         .posts-table tbody tr:hover {
             background-color: #d1f0ff;
             transition: background-color 0.3s;
+            cursor: pointer;
         }
 
         .table-title {
@@ -50,48 +50,46 @@
     </div>
     <!-- header section end -->
 
-    <!-- Posts Table -->
+    <!-- Table Title -->
     <div class="table-title">All Posts</div>
 
     <!-- Category Filter Form -->
     <form method="GET" action="{{ route('posts.list') }}" id="category-filter-form" style="text-align:center; margin-bottom:20px;">
-    <label style="margin-right:10px; font-weight:600;">Filter by Category:</label>
+        <label style="margin-right:10px; font-weight:600;">Filter by Category:</label>
 
-    <div class="custom-select-wrapper" style="display:inline-block; position:relative; width:220px;">
-        <!-- Hidden input to store selected category -->
-        <input type="hidden" name="category_id" id="category_id" value="{{ $categoryId ?? '' }}">
+        <div class="custom-select-wrapper" style="display:inline-block; position:relative; width:220px;">
+            <input type="hidden" name="category_id" id="category_id" value="{{ $categoryId ?? '' }}">
 
-        <!-- Custom dropdown box -->
-        <div class="custom-select" style="border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; padding:10px 12px; user-select:none;">
-            <span id="selected-category">
-                @php
-                    $selectedCategoryName = 'All Categories';
-                    if(isset($categoryId) && $categoryId) {
-                        foreach($categories as $category) {
-                            if($category->id == $categoryId) {
-                                $selectedCategoryName = $category->name;
-                                break;
+            <div class="custom-select" style="border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer; padding:10px 12px; user-select:none;">
+                <span id="selected-category">
+                    @php
+                        $selectedCategoryName = 'All Categories';
+                        if(isset($categoryId) && $categoryId) {
+                            foreach($categories as $category) {
+                                if($category->id == $categoryId) {
+                                    $selectedCategoryName = $category->name;
+                                    break;
+                                }
                             }
                         }
-                    }
-                    echo e($selectedCategoryName);
-                @endphp
-            </span>
-            <span style="float:right;">&#9662;</span> <!-- down arrow -->
-        </div>
-
-        <!-- Options list (hidden by default) -->
-        <div class="custom-options" style="display:none; position:absolute; top:100%; left:0; right:0; border:1px solid #ccc; border-radius:6px; background:#fff; z-index:1000; max-height:200px; overflow-y:auto;">
-            <span class="custom-option" data-value="">All Categories</span>
-            @foreach($categories as $category)
-                <span class="custom-option" data-value="{{ $category->id }}" style="display:block; padding:8px 12px; cursor:pointer;">
-                    {{ $category->name }}
+                        echo e($selectedCategoryName);
+                    @endphp
                 </span>
-            @endforeach
-        </div>
-    </div>
-</form>
+                <span style="float:right;">&#9662;</span>
+            </div>
 
+            <div class="custom-options" style="display:none; position:absolute; top:100%; left:0; right:0; border:1px solid #ccc; border-radius:6px; background:#fff; z-index:1000; max-height:200px; overflow-y:auto;">
+                <span class="custom-option" data-value="">All Categories</span>
+                @foreach($categories as $category)
+                    <span class="custom-option" data-value="{{ $category->id }}" style="display:block; padding:8px 12px; cursor:pointer;">
+                        {{ $category->name }}
+                    </span>
+                @endforeach
+            </div>
+        </div>
+    </form>
+
+    <!-- Posts Table -->
     <table class="posts-table">
         <thead>
             <tr>
@@ -104,7 +102,7 @@
         </thead>
         <tbody>
             @foreach($posts as $post)
-            <tr>
+            <tr onclick="window.location='{{ route('post.details', $post->id) }}';">
                 <td>{{ $post->id }}</td>
                 <td>{{ $post->name }}</td>
                 <td>{{ $post->title }}</td>
@@ -119,38 +117,34 @@
     @include('home.footer')
 
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const wrapper = document.querySelector('.custom-select-wrapper');
-    const trigger = wrapper.querySelector('.custom-select');
-    const optionsContainer = wrapper.querySelector('.custom-options');
-    const options = wrapper.querySelectorAll('.custom-option');
-    const hiddenInput = wrapper.querySelector('#category_id');
-    const form = document.querySelector('#category-filter-form');
-    const selectedSpan = wrapper.querySelector('#selected-category');
+    document.addEventListener('DOMContentLoaded', function() {
+        const wrapper = document.querySelector('.custom-select-wrapper');
+        const trigger = wrapper.querySelector('.custom-select');
+        const optionsContainer = wrapper.querySelector('.custom-options');
+        const options = wrapper.querySelectorAll('.custom-option');
+        const hiddenInput = wrapper.querySelector('#category_id');
+        const form = document.querySelector('#category-filter-form');
+        const selectedSpan = wrapper.querySelector('#selected-category');
 
-    // Toggle dropdown visibility
-    trigger.addEventListener('click', function(e) {
-        e.stopPropagation();
-        optionsContainer.style.display = optionsContainer.style.display === 'block' ? 'none' : 'block';
-    });
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            optionsContainer.style.display = optionsContainer.style.display === 'block' ? 'none' : 'block';
+        });
 
-    // Option selection
-    options.forEach(option => {
-        option.addEventListener('click', function() {
-            const value = this.getAttribute('data-value');
-            selectedSpan.textContent = this.textContent;
-            hiddenInput.value = value; // update hidden input
+        options.forEach(option => {
+            option.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                selectedSpan.textContent = this.textContent;
+                hiddenInput.value = value;
+                optionsContainer.style.display = 'none';
+                form.submit();
+            });
+        });
+
+        window.addEventListener('click', function() {
             optionsContainer.style.display = 'none';
-            form.submit(); // submit the form
         });
     });
-
-    // Close dropdown when clicking outside
-    window.addEventListener('click', function() {
-        optionsContainer.style.display = 'none';
-    });
-});
-</script>
-
+    </script>
 </body>
 </html>
