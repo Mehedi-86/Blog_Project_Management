@@ -114,8 +114,11 @@
 
             <div class="card">
                 <h4>{{ $post->title }}</h4>
-                <p style="margin-bottom: 10px;">{{ $post->content }}</p>
-                <small>📌 Post by <strong>{{ $post->name }}</strong></small>
+                
+                <small>
+                    📌 Post by <strong>{{ $post->name }}</strong> 
+                    | 🏷️ Category: <strong>{{ $post->category_name ?? 'Uncategorized' }}</strong>
+                </small>
 
                 <div class="btn-container">
                     <!-- Like / Unlike -->
@@ -160,22 +163,34 @@
                     @endif
 
                     <!-- View Button with Count -->
-                    <form action="{{ route('increaseView', $post->id) }}" method="POST" style="display:inline;">
-                        @csrf
-                        <button type="submit" class="btn btn-info" 
-                            style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
-                            👁️ View ({{ $post->views }})
-                        </button>
-                    </form>
+                    <a href="{{ route('viewPost', $post->id) }}" 
+                        class="btn btn-info"
+                        style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
+                        👁️ View ({{ $post->views }})
+                    </a>
 
-                    <!-- Update Button (only visible to post owner) -->
-                        @if(Auth::id() === $post->user_id)
+                    <!-- Update & Delete Buttons (only visible to post owner) -->
+                    @if(Auth::id() === $post->user_id)
+                        <div style="display: flex; gap: 10px;">
+                            <!-- Update Button -->
                             <a href="{{ route('editPost', $post->id) }}" 
-                            class="btn btn-warning" 
-                            style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
-                            ✏️ Update
+                                class="btn btn-warning" 
+                                style="border-radius:10px; padding:10px 20px; font-weight:600; color:white;">
+                                ✏️ Update
                             </a>
-                        @endif
+
+                            <!-- Delete Button -->
+                            <form action="{{ route('deletePost', $post->id) }}" method="POST" 
+                                onsubmit="return confirm('Are you sure you want to delete this post?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger" 
+                                        style="border-radius:10px; padding:10px 20px; font-weight:600;">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </div>
+                    @endif
                 </div>
             </div>
         @endforeach

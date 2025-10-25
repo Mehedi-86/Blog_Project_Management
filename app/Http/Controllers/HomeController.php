@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 // Models are no longer needed here as we are using raw SQL for all operations.
-// use App\Models\Post;
+use App\Models\Post;
 // use App\Models\User;
 // use App\Models\Follow;
 use Illuminate\Support\Facades\Auth;
@@ -147,9 +147,10 @@ class HomeController extends Controller
 
         // This was already a raw SQL query.
         $posts = DB::select("
-            SELECT posts.*, users.name 
+            SELECT posts.*, users.name, c.name AS category_name
             FROM posts
             JOIN users ON posts.user_id = users.id
+            LEFT JOIN categories c ON posts.category_id = c.id
             ORDER BY posts.created_at DESC
         ");
 
@@ -204,6 +205,19 @@ class HomeController extends Controller
         DB::delete('DELETE FROM likes WHERE post_id = ? AND user_id = ?', [$id, $user_id]);
 
         return redirect()->back()->with('success', 'Post unliked!');
+    }
+
+    public function deletePost($id)
+    {
+        $post = Post::findOrFail($id);
+
+        if (Auth::id() !== $post->user_id) {
+            return redirect()->back()->with('error', 'Unauthorized action!');
+        }
+
+        $post->delete();
+
+        return redirect()->back()->with('success', 'Post deleted successfully!');
     }
 
     public function showPostsForComment()
@@ -425,6 +439,19 @@ class HomeController extends Controller
         session()->forget('view_as_user');
         return redirect()->route('home');
     }
+
+    public function viewPost($id)
+{
+    $post = \App\Models\Post::findOrFail($id);
+
+    // Increase view count by 1
+    $post->views = $post->views + 1;
+    $post->save();
+
+    // Pass the post to post_details.blade.php
+    return view('home.post_details', compact('post'));
+}
+
 
     public function increaseView($id)
     {

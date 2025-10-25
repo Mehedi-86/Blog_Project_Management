@@ -198,3 +198,7 @@ Route::get('/activity-analysis', [HomeController::class, 'userActivityAnalysis']
 Route::get('/personalized-feed', [HomeController::class, 'personalizedFeed'])->name('personalized.feed');
 
 Route::get('/post/{id}', [HomeController::class, 'showPost'])->name('post.details');
+
+Route::delete('/post/{id}', [HomeController::class, 'deletePost'])->name('deletePost');
+
+Route::get('/post/{id}/view', [HomeController::class, 'viewPost'])->name('viewPost');
