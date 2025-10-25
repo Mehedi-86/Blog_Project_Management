@@ -1265,63 +1265,101 @@ public function showPost($id)
      * It tries keywords first, and if no results, falls back to categories.
      */
     public function handleAiSearch(Request $request)
-    {
-        $keywords = $request->input('keywords');
-        $categories = $request->input('categories');
-        $posts = [];
+{
+    $keywords = $request->input('keywords');      // e.g., ["how", "to", "lead", "healthy", "life"]
+    $categories = $request->input('categories');  // e.g., ["Lifestyle"]
+    $posts = [];
 
-        // --- LAYER 1: Try to find posts by KEYWORDS first ---
-        if (!empty($keywords) && is_array($keywords)) {
+    // --- Stop words to ignore ---
+    $stopWords = ['a','an','the','how','to','is','on','at','for','in','of','and','or','by','with','from','as','that','post','posts'];
+
+    if (!empty($keywords) && is_array($keywords)) {
+
+        // --- Remove stop words ---
+        $keywords = array_filter($keywords, fn($word) => !in_array(strtolower($word), $stopWords));
+        $keywords = array_values($keywords);
+
+        if (!empty($keywords)) {
             $bindings = [];
-            $keywordClauses = [];
+            $relevanceParts = [];
 
-            // Loop through each keyword and add a clause for it
+            // --- Exact phrase in title (weight 5) ---
+            $phrase = implode(' ', $keywords);
+            $relevanceParts[] = "CASE WHEN p.title LIKE ? THEN 5 ELSE 0 END";
+            $bindings[] = '%' . $phrase . '%';
+
+            // --- Any consecutive keyword pairs in title (weight 4) ---
+            for ($i = 0; $i < count($keywords) - 1; $i++) {
+                $pair = $keywords[$i] . ' ' . $keywords[$i + 1];
+                $relevanceParts[] = "CASE WHEN p.title LIKE ? THEN 4 ELSE 0 END";
+                $bindings[] = '%' . $pair . '%';
+            }
+
+            // --- Single keywords in title (weight 3) ---
             foreach ($keywords as $keyword) {
-                $keywordClauses[] = "(p.title LIKE ? OR p.content LIKE ?)";
-                $bindings[] = '%' . $keyword . '%';
+                $relevanceParts[] = "CASE WHEN p.title LIKE ? THEN 3 ELSE 0 END";
                 $bindings[] = '%' . $keyword . '%';
             }
 
-            // Build the keyword-based query
+            // --- Single keywords in content (weight 2) ---
+            foreach ($keywords as $keyword) {
+                $relevanceParts[] = "CASE WHEN p.content LIKE ? THEN 2 ELSE 0 END";
+                $bindings[] = '%' . $keyword . '%';
+            }
+
+            // --- Category match (weight 1) ---
+            if (!empty($categories) && is_array($categories)) {
+                $placeholders = implode(',', array_fill(0, count($categories), '?'));
+                $relevanceParts[] = "CASE WHEN c.name IN ($placeholders) THEN 1 ELSE 0 END";
+                $bindings = array_merge($bindings, $categories);
+            }
+
+            $relevanceSql = implode(' + ', $relevanceParts);
+
+            // --- Main query with relevance ---
             $sql = "
-                SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
+                SELECT 
+                    p.id, 
+                    p.title, 
+                    p.created_at, 
+                    u.name as author_name, 
+                    c.name as category_name,
+                    ($relevanceSql) as relevance
                 FROM posts p
                 JOIN users u ON p.user_id = u.id
                 LEFT JOIN categories c ON p.category_id = c.id
                 WHERE p.status = 'active'
-                AND (" . implode(' AND ', $keywordClauses) . ")
-                ORDER BY p.created_at DESC
-                LIMIT 20
+                HAVING relevance > 0
+                ORDER BY relevance DESC, p.created_at DESC
+                LIMIT 5
             ";
-            
+
             $posts = DB::select($sql, $bindings);
         }
-
-        // --- LAYER 2: FALLBACK to CATEGORIES if no posts were found ---
-        // We only run this if the keyword search gave 0 results AND we have categories to search for.
-        if (empty($posts) && !empty($categories) && is_array($categories)) {
-            
-            // Create the '?' placeholders for our secure "WHERE IN" query
-            $placeholders = implode(',', array_fill(0, count($categories), '?'));
-
-            // Build the category-based query
-            $sql = "
-                SELECT p.id, p.title, p.created_at, u.name as author_name, c.name as category_name
-                FROM posts p
-                JOIN users u ON p.user_id = u.id
-                LEFT JOIN categories c ON p.category_id = c.id
-                WHERE c.name IN ($placeholders)
-                AND p.status = 'active'
-                ORDER BY p.created_at DESC
-                LIMIT 20
-            ";
-
-            // Execute the category query, passing the $categories array as bindings
-            $posts = DB::select($sql, $categories);
-        }
-
-        // Return the result (either from keywords, categories, or an empty array)
-        return response()->json($posts);
     }
+
+    // --- Fallback to category only if no posts found ---
+    if (empty($posts) && !empty($categories) && is_array($categories)) {
+        $placeholders = implode(',', array_fill(0, count($categories), '?'));
+        $sql = "
+            SELECT 
+                p.id, 
+                p.title, 
+                p.created_at, 
+                u.name as author_name, 
+                c.name as category_name
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE c.name IN ($placeholders)
+            AND p.status = 'active'
+            ORDER BY p.created_at DESC
+            LIMIT 5
+        ";
+        $posts = DB::select($sql, $categories);
+    }
+
+    return response()->json($posts);
+}
 
 }
