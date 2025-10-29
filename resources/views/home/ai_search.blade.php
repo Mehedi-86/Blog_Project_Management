@@ -164,7 +164,7 @@
     <!-- AI Search Content -->
     <div class="ai-search-container">
         <div class="ai-search-header">
-            <h1>AI Powered Post Search</h1>
+            <h1>Smart Search</h1>
             <p>Ask a question or describe what you're looking for, and our AI will find related posts.</p>
         </div>
 
