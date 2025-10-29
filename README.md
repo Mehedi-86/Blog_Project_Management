@@ -162,7 +162,7 @@ DB_PASSWORD=
 <h2>👥 Authors & Acknowledgements</h2>
 
 <ul>
-  <li><b>Author:</b> Mehedi Hasan Rabby</li>
+  <li><b>Author:</b> Mehedi Hasan Rabby (me)</li>
   <li><b>Supervisors:</b>
   <ul>
     <li>
